@@ -1,0 +1,49 @@
+services:
+  # PostgreSQL Service
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      # Format MAPPING (lebih mudah dibaca)
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: kasir_db
+    ports:
+      - "5050:5432" # <-- Ganti port postgres jika ingin, misal 5050:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # pgAdmin Service
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    environment:
+      # Format MAPPING
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "6060:80"
+    depends_on:
+      - db
+
+  # Express API Service (Contoh lengkap)
+  express-api:
+    build: . # Sesuaikan dengan path backend Anda jika perlu, misal: ./express-api
+    container_name: express_api
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://root:root@db:5432/kasir_db?schema=public"
+    volumes:
+      - .:/app # Sesuaikan dengan path backend Anda jika perlu
+      - /app/node_modules
+    command: npm run dev
+
+# Deklarasikan named volumes
+volumes:
+  postgres_data: {}
