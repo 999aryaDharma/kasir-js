@@ -2,8 +2,8 @@ import { state, subscribe } from "../../core/state.js";
 import { deleteCategoryById } from "./categoryService.js";
 
 export function renderCategoryList() {
-	const ul = document.getElementById("category-list");
-	ul.innerHTML = "";
+	const ol = document.getElementById("category-list");
+	ol.innerHTML = "";
 	state.categories.forEach((cat) => {
 		const li = document.createElement("li");
 		li.innerHTML = `
@@ -19,7 +19,7 @@ export function renderCategoryList() {
 				deleteCategoryById(cat.id);
 			}
 		});
-		ul.appendChild(li);
+		ol.appendChild(li);
 	});
 }
 

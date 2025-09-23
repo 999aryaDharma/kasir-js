@@ -6,50 +6,80 @@ const getAllProducts = async (req, res) => {
 		const products = await productRepository.findAllProducts();
 		return successResponse(res, products, "Products fetched successfully");
 	} catch (error) {
+		console.error("Error getting products:", error);
 		return errorResponse(res, "Error getting products", 500);
 	}
 };
 
 const getProductById = async (req, res) => {
 	try {
-		const id = req.params.id;
+		const id = parseInt(req.params.id, 10);
+		if (isNaN(id)) {
+			return errorResponse(res, "Invalid product ID", 400);
+		}
 		const product = await productRepository.findProductById(id);
 		if (!product) {
 			return errorResponse(res, "Product not found", 404);
 		}
 		return successResponse(res, product, "Product fetched successfully");
 	} catch (error) {
+		console.error("Error getting product by ID:", error);
 		return errorResponse(res, "Error getting product", 500);
 	}
 };
 
 const createProduct = async (req, res) => {
 	try {
-		const productData = req.body;
-		const product = await productRepository.insertProduct(productData);
+		const { categoryId, ...productData } = req.body;
+		const dataToCreate = {
+			...productData,
+			category: {
+				connect: {
+					id: categoryId,
+				},
+			},
+		};
+		const product = await productRepository.insertProduct(dataToCreate);
 		return successResponse(res, product, "Product created successfully", 201);
 	} catch (error) {
+		console.error("Error creating product:", error);
 		return errorResponse(res, "Error creating product", 500);
 	}
 };
 
 const updateProduct = async (req, res) => {
 	try {
-		const id = req.params.id;
-		const productData = req.body;
-		const product = await productRepository.updateProduct(id, productData);
+		const id = parseInt(req.params.id, 10);
+		if (isNaN(id)) {
+			return errorResponse(res, "Invalid product ID", 400);
+		}
+		// Pisahkan `id` dan `categoryId` dari sisa data yang akan di-update
+		const { id: bodyId, categoryId, ...dataToUpdate } = req.body;
+
+		if (categoryId) {
+			dataToUpdate.category = {
+				connect: { id: categoryId },
+			};
+		}
+
+		const product = await productRepository.updateProduct(id, dataToUpdate);
 		return successResponse(res, product, "Product updated successfully");
 	} catch (error) {
+		console.error(`Error updating product with ID ${req.params.id}:`, error);
 		return errorResponse(res, "Error updating product", 500);
 	}
 };
 
 const deleteProduct = async (req, res) => {
 	try {
-		const id = req.params.id;
+		const id = parseInt(req.params.id, 10);
+		if (isNaN(id)) {
+			return errorResponse(res, "Invalid product ID", 400);
+		}
 		const product = await productRepository.deleteProduct(id);
 		return successResponse(res, product, "Product deleted successfully");
 	} catch (error) {
+		console.error(`Error deleting product with ID ${req.params.id}:`, error);
 		return errorResponse(res, "Error deleting product", 500);
 	}
 };
