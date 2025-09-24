@@ -1,4 +1,5 @@
 const productRepository = require("../repositories/productRepository");
+const productService = require("../services/productService.js");
 const { successResponse, errorResponse } = require("../utils/response");
 
 const getAllProducts = async (req, res) => {
@@ -39,11 +40,12 @@ const createProduct = async (req, res) => {
 				},
 			},
 		};
-		const product = await productRepository.insertProduct(dataToCreate);
+		const product = await productService.createProduct(dataToCreate);
 		return successResponse(res, product, "Product created successfully", 201);
 	} catch (error) {
 		console.error("Error creating product:", error);
-		return errorResponse(res, "Error creating product", 500);
+		const status = error.statusCode || 500;
+		return errorResponse(res, error.message, status);
 	}
 };
 
@@ -62,11 +64,12 @@ const updateProduct = async (req, res) => {
 			};
 		}
 
-		const product = await productRepository.updateProduct(id, dataToUpdate);
+		const product = await productService.updateProduct(id, dataToUpdate);
 		return successResponse(res, product, "Product updated successfully");
 	} catch (error) {
 		console.error(`Error updating product with ID ${req.params.id}:`, error);
-		return errorResponse(res, "Error updating product", 500);
+		const status = error.statusCode || 500;
+		return errorResponse(res, error.message, status);
 	}
 };
 
