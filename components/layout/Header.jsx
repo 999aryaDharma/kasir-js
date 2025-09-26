@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, LogOut, Settings, Bell } from "lucide-react";
+import { User, LogOut, Bell, UserCircle, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import Link from "next/link";
 
 export default function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -24,6 +25,7 @@ export default function Header() {
   const handleLogout = () => {
     // Implementasi logout nanti
     console.log("Logout clicked");
+    setIsProfileOpen(false);
   };
 
   return (
@@ -79,7 +81,7 @@ export default function Header() {
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Profil Pengguna</DialogTitle>
+            <DialogTitle>Menu Akun</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6">
@@ -95,30 +97,35 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Menu List */}
             <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  // Navigate to settings
-                }}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Pengaturan Akun
-              </Button>
+              <Link href="/profile" onClick={() => setIsProfileOpen(false)}>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  Profile
+                </Button>
+              </Link>
+              
+              <Link href="/pos" onClick={() => setIsProfileOpen(false)}>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Ke Kasir
+                </Button>
+              </Link>
               
               <Button
                 variant="outline"
                 className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  handleLogout();
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Keluar
+                Logout
               </Button>
             </div>
           </div>
