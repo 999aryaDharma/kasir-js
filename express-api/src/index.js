@@ -1,29 +1,29 @@
 BigInt.prototype.toJSON = function () {
 	return this.toString();
 };
+
 const express = require("express");
 const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const categoryRoutes = require("./routes/categoryRoutes"); // Import rute
-const productRoutes = require("./routes/productRoutes");
+const routes = require("./routes"); // ✅ Import aggregator
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
-// Terapkan CORS sebagai middleware global SEBELUM rute
+// Middleware global
 app.use(cors());
 app.use(express.json());
 
+// Health check
 app.get("/", (req, res) => {
 	res.json({ message: "🚀 API Kasir is alive!" });
 });
 
-// Gunakan middleware error handling
-app.use(errorMiddleware);
+// Semua routes di bawah /api
+app.use("/api", routes);
 
-// Gunakan rute produk dengan prefix /products
-app.use("/api", productRoutes);
-app.use("/api", categoryRoutes);
+// Error handler (taruh paling akhir)
+app.use(errorMiddleware);
 
 app.listen(PORT, () => {
 	console.log(`Server running on http://localhost:${PORT}`);

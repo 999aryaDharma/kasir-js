@@ -1,24 +1,22 @@
 # Gunakan base image Node.js versi 18
 FROM node:18-alpine
 
-# Set direktori kerja di dalam container
+# Set working dir
 WORKDIR /app
 
-# Salin package.json dan package-lock.json terlebih dahulu
-# Ini memanfaatkan layer caching Docker
+# Copy package.json untuk install dependensi
 COPY package*.json ./
 
-# Install dependensi
 RUN npm install
 
-# Salin sisa file aplikasi
-COPY . .
+# Copy schema prisma
+COPY prisma ./prisma/
 
-# Jalankan migrasi database saat container build
-RUN npx prisma generate 
+# Generate prisma client (perlu node_modules sudah ada)
+RUN npx prisma generate
 
-# Buka port 3000 agar bisa diakses dari luar container
+# Expose port
 EXPOSE 3000
 
-# Perintah default untuk menjalankan aplikasi saat container dimulai
-CMD ["npm", "run", "start"]
+# Jalankan dev server (pakai nodemon atau npm run dev)
+CMD ["npm", "run", "dev"]

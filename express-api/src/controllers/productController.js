@@ -31,15 +31,34 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
 	try {
+		// 1. Ambil data dari body permintaan
 		const { categoryId, ...productData } = req.body;
+
+		// Pastikan categoryId ada sebelum membuat kode
+		if (!categoryId) {
+			return errorResponse(res, "categoryId is required", 400);
+		}
+
+		// 2. Buat kode produk sesuai format yang diinginkan
+		// Bagian pertama: categoryId, 3 digit, diisi '0' di depan jika kurang
+		const categoryPart = String(categoryId).padStart(3, "0");
+		// Bagian kedua: Angka random antara 0-999, 3 digit, diisi '0' di depan jika kurang
+		const randomPart = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
+
+		const generatedCode = `${categoryPart}-${randomPart}`;
+
+		// 3. Gabungkan semua data menjadi satu objek untuk disimpan
 		const dataToCreate = {
 			...productData,
+			code: generatedCode, // Tambahkan kode yang sudah dibuat
 			category: {
 				connect: {
 					id: categoryId,
 				},
 			},
 		};
+
+		// 4. Kirim data yang sudah lengkap ke service
 		const product = await productService.createProduct(dataToCreate);
 		return successResponse(res, product, "Product created successfully", 201);
 	} catch (error) {
@@ -55,15 +74,8 @@ const updateProduct = async (req, res) => {
 		if (isNaN(id)) {
 			return errorResponse(res, "Invalid product ID", 400);
 		}
-		// Pisahkan `id` dan `categoryId` dari sisa data yang akan di-update
-		const { id: bodyId, categoryId, ...dataToUpdate } = req.body;
-
-		if (categoryId) {
-			dataToUpdate.category = {
-				connect: { id: categoryId },
-			};
-		}
-
+		// Langsung gunakan req.body. Service yang akan menangani logikanya.
+		const dataToUpdate = req.body;
 		const product = await productService.updateProduct(id, dataToUpdate);
 		return successResponse(res, product, "Product updated successfully");
 	} catch (error) {

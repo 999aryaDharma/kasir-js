@@ -18,7 +18,7 @@ export function setCategories(newCategories) {
 }
 
 export function addCategory(newCategory) {
-	state.categories.push(newCategory);
+	state.categories = [...state.categories, newCategory];
 	notify();
 }
 
@@ -38,7 +38,7 @@ export function setProducts(newProducts) {
 }
 
 export function addProduct(newProduct) {
-	state.products.push(newProduct);
+	state.products = [...state.products, newProduct];
 	notify();
 }
 
