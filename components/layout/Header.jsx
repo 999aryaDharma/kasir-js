@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, LogOut, Bell, UserCircle, ShoppingCart } from "lucide-react";
+import { User, LogOut, Bell, CircleUser as UserCircle, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
