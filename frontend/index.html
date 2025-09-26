@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Testing</title>
+		<style>
+			.flex-container {
+				display: flex;
+				gap: 20px;
+			}
+
+			.column {
+				padding: 16px;
+				border: 1px solid #ccc;
+			}
+
+			.category-column {
+				flex: 2; /* 40% */
+			}
+
+			.product-area {
+				flex: 3; /* 60% */
+			}
+
+			.product-container {
+				display: flex;
+				gap: 20px;
+			}
+
+			.product-form-container,
+			.product-list-container {
+				flex: 1; /* Membuat kedua kolom berbagi ruang 50/50 */
+			}
+
+			#product-list {
+				list-style-type: none;
+				padding: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="flex-container">
+			<div class="column category-column">
+				<h2>Kategori</h2>
+
+				<form id="category-form">
+					<input type="hidden" id="category-id" />
+					<input type="text" id="category-name" placeholder="Category Name" />
+					<button type="submit">Simpan</button>
+					<button type="button" id="cancel-edit-btn" style="display: none">Batal</button>
+				</form>
+
+				<h2>Daftar Kategori</h2>
+				<ol id="category-list"><ol/>
+			</div>
+
+			<div class="column product-area">
+				<div class="product-container">
+					<div class="product-form-container">
+						<h2>Produk</h2>
+						<label for="product-category">Select Category</label>
+						<select name="product-category" id="product-category"></select
+						><br />
+
+						<form id="product-form">
+							<label for="product-name">Product Name</label>
+							<input type="hidden" id="product-id" />
+							<input type="text" id="product-name" placeholder="Product Name" /><br />
+
+							<label for="product-stock">Product Stock</label>
+							<input type="number" min="0" id="product-stock" placeholder="Product Stock" /><br />
+
+							<label for="costPrice">Cost Price</label>
+							<input type="number" min="0" id="costPrice" placeholder="Rp" /><br />
+							<label for="sellingPrice">Selling Price</label>
+							<input type="number" min="0" id="sellingPrice" placeholder="Rp" /><br />
+
+							<button type="submit">Simpan</button>
+							<button type="button" id="product-cancel-btn" style="display: none">Batal</button>
+						</form>
+					</div>
+					<div class="product-list-container">
+						<h2>Daftar Produk</h2>
+						<ol id="product-list"></ol>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script type="module">
+			import { initCategoryController } from "./features/category/categoryController.js";
+			import { renderCategoryDropdown } from "./features/product/productService.js";
+			import { initProductController } from "./features/product/productController.js";
+
+			initProductController();
+			initCategoryController();
+		</script>
+	</body>
+</html>

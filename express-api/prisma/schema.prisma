@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") 
+}
+
+model User {
+  id        BigInt   @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      Int      @default(0) // 0 = kasir, 1 = admin
+  createdAt DateTime @default(now())
+
+  transactions Transaction[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    BigInt
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+
+model Category {
+  id        BigInt   @id @default(autoincrement())
+  name      String
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  products  Product[]
+}
+
+model Product {
+  id         BigInt   @id @default(autoincrement())
+  code       String   @unique
+  name       String
+  stock      Int      @default(0)
+  sellingPrice Decimal  @db.Decimal(12, 2) // harga jual
+  costPrice Decimal  @db.Decimal(12, 2) // harga modal
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  categoryId BigInt
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  items TransactionItem[]
+}
+
+model Transaction {
+  id        BigInt   @id @default(autoincrement())
+  total     Decimal  @db.Decimal(12, 2)
+  pay       Decimal  @db.Decimal(12, 2)
+  change    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  userId    BigInt
+  user      User @relation(fields: [userId], references: [id])
+
+  items     TransactionItem[]
+}
+
+model TransactionItem {
+  id            BigInt   @id @default(autoincrement())
+  quantity      Int
+  subtotal      Decimal  @db.Decimal(12, 2)
+  sellingPrice Decimal  @db.Decimal(12, 2) // harga jual
+  costPrice Decimal  @db.Decimal(12, 2) // harga modal
+
+  transactionId BigInt
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  productId     BigInt
+  product       Product @relation(fields: [productId], references: [id])
+}

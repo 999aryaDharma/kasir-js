@@ -1,0 +1,9 @@
+# Dependencies
+/node_modules
+/express-api/node_modules
+/frontend-next/node_modules
+
+# Environment variables
+/express-api/.env
+/frontend-next/.env
+

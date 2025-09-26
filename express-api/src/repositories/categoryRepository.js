@@ -1,0 +1,55 @@
+const prisma = require("../config/prisma");
+
+const findAllCategory = async () => {
+	return await prisma.category.findMany({
+		where: {
+			isDeleted: false,
+		},
+	});
+};
+
+const findCategoryById = async (id) => {
+	return await prisma.category.findUnique({
+		where: {
+			id: parseInt(id),
+			isDeleted: false,
+		},
+	});
+};
+
+const insertCategory = async (categoryData) => {
+	console.log("📥 Data diterima di repository:", categoryData);
+	const category = await prisma.category.create({
+		data: categoryData,
+	});
+	console.log("✅ Hasil insert dari Prisma:", category);
+	return category;
+};
+
+const updateCategory = async (id, categoryData) => {
+	return await prisma.category.update({
+		where: {
+			id: parseInt(id),
+		},
+		data: categoryData,
+	});
+};
+
+const deleteCategory = async (id) => {
+	return await prisma.category.update({
+		where: {
+			id: parseInt(id),
+		},
+		data: {
+			isDeleted: true,
+		},
+	});
+};
+
+module.exports = {
+	findAllCategory,
+	findCategoryById,
+	insertCategory,
+	updateCategory,
+	deleteCategory,
+};
