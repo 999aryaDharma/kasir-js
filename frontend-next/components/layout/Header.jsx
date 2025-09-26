@@ -1,23 +1,33 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { User, LogOut, Bell, CircleUser as UserCircle, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { logoutUser } from "@/lib/api";
+import { useAuth } from "@/components/auth/SessionProvider";
 
 export default function Header() {
-	// Mock data user - nanti bisa diganti dengan data dari context/state management
-	const currentUser = {
-		name: "Admin User",
-		email: "admin@kasirpos.com",
-		role: "Administrator",
-		avatar: null,
+	const router = useRouter();
+	const { user } = useAuth(); // Ambil data user dari context
+
+	const handleLogout = async () => {
+		try {
+			await logoutUser();
+			localStorage.removeItem("accessToken");
+			router.push("/login");
+		} catch (error) {
+			console.error("Logout failed:", error);
+		}
 	};
 
-	const handleLogout = () => {
-		// Implementasi logout nanti
-		console.log("Logout clicked");
-	};
+	const currentUser = user
+		? {
+				name: user.username,
+				role: user.role === 1 ? "Administrator" : "Kasir",
+		  }
+		: { name: "Loading...", role: "..." };
 
 	return (
 		<header className="h-16 border-b bg-white flex items-center justify-between px-8 shadow-sm">
@@ -44,7 +54,7 @@ export default function Header() {
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon" className="rounded-full">
-								{currentUser.avatar ? (
+								{user && user.avatar ? (
 									<img src={currentUser.avatar} alt={currentUser.name} className="h-8 w-8 rounded-full" />
 								) : (
 									<div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
@@ -55,8 +65,8 @@ export default function Header() {
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56">
 							<DropdownMenuLabel>
-								<p className="font-semibold">{currentUser.name}</p>
-								<p className="text-xs text-gray-500 font-normal">{currentUser.email}</p>
+								<p className="font-semibold">{user ? user.username : "Loading..."}</p>
+								<p className="text-xs text-gray-500 font-normal">{user ? (user.role === 1 ? "Administrator" : "Kasir") : "..."}</p>
 							</DropdownMenuLabel>
 							<DropdownMenuSeparator />
 							<Link href="/profile" passHref>

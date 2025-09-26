@@ -6,4 +6,4 @@
 # Environment variables
 /express-api/.env
 /frontend-next/.env
-
+/.env
