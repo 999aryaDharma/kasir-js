@@ -136,8 +136,8 @@ export async function deleteCategoryById(id) {
 }
 
 // --- PRODUCT API ---
-export async function fetchProducts() {
-	return apiFetch("/products");
+export async function fetchProducts(url) {
+	return apiFetch(url);
 }
 
 export async function createProduct(data) {
@@ -160,9 +160,17 @@ export async function deleteProductById(id) {
 	});
 }
 
+// --- TRANSACTION API ---
+export async function createTransaction(data) {
+	return apiFetch("/transactions", {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+}
+
 // --- SUMMARY API ---
-export async function fetchSummary() {
-	return apiFetch("/summary");
+export async function fetchSummary(url) {
+	return apiFetch(url);
 }
 
 // --- AUTH API ---
@@ -193,6 +201,6 @@ export async function logoutUser() {
 	});
 }
 
-export async function fetchUserLogin() {
-	return apiFetch("/auth/me");
+export async function fetchUserLogin(url) {
+	return apiFetch(url);
 }

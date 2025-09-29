@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const JWT_ACCESS_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
-const ACCESS_TOKEN_EXPIRATION = "15m";
+const ACCESS_TOKEN_EXPIRATION = "1hr";
 const REFRESH_TOKEN_EXPIRATION = "7d";
 
 /**

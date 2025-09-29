@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 import useSWR, { mutate } from "swr";
 // 1. Ganti fetcher dan mutator dengan fungsi API yang spesifik
 import {
@@ -17,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, Trash } from "lucide-react";
+import { Edit, Trash, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 const initialFormState = {
 	id: null,
@@ -30,8 +31,16 @@ const initialFormState = {
 };
 
 export default function ProductsPage() {
-	// 2. Gunakan fungsi fetcher yang benar untuk setiap hook SWR
-	const { data: products, error: productsError, mutate: mutateProducts } = useSWR("/products", fetchProducts);
+	// State untuk tanstack-table
+	const [globalFilter, setGlobalFilter] = useState("");
+	const [pagination, setPagination] = useState({
+		pageIndex: 0,
+		pageSize: 10,
+	});
+
+	// 1. Buat URL dinamis untuk SWR
+	const productsUrl = `/products?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`;
+	const { data: paginatedData, error: productsError, mutate: mutateProducts } = useSWR(productsUrl, fetchProducts);
 	const { data: categories, error: categoriesError } = useSWR("/categories", fetchCategories);
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -40,10 +49,77 @@ export default function ProductsPage() {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [productToDelete, setProductToDelete] = useState(null);
 
+	// 2. Ekstrak data produk dan informasi paginasi
+	const products = paginatedData?.data || [];
+	const totalPages = paginatedData?.meta?.totalPages || 1;
 	const isEditing = !!productForm.id;
 
+	const getCategoryName = (id) => {
+		const category = categories?.find((cat) => cat.id === id);
+		return category ? category.name : "N/A";
+	};
+
+	const columns = useMemo(
+		() => [
+			{
+				accessorKey: "name",
+				header: "Nama Produk",
+			},
+			{
+				accessorKey: "code",
+				header: "Kode Produk",
+			},
+			{
+				accessorKey: "categoryId",
+				header: "Kategori",
+				cell: ({ row }) => getCategoryName(row.getValue("categoryId")),
+			},
+			{
+				accessorKey: "stock",
+				header: () => <div className="text-center">Stok</div>,
+				cell: ({ row }) => <div className="text-center">{row.getValue("stock")}</div>,
+			},
+			{
+				accessorKey: "sellingPrice",
+				header: () => <div className="text-right">Harga Jual</div>,
+				cell: ({ row }) => <div className="text-right">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(row.getValue("sellingPrice"))}</div>,
+			},
+			{
+				id: "actions",
+				header: () => <div className="text-right">Aksi</div>,
+				cell: ({ row }) => (
+					<div className="text-right">
+						<Button variant="ghost" size="icon" onClick={() => handleOpenDialog(row.original)}>
+							<Edit className="h-4 w-4" />
+						</Button>
+						<Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleOpenDeleteDialog(row.original)}>
+							<Trash className="h-4 w-4" />
+						</Button>
+					</div>
+				),
+			},
+		],
+		[categories] // Tambahkan categories sebagai dependensi
+	);
+
+	const table = useReactTable({
+		data: products, // 3. Gunakan array produk yang sudah diekstrak
+		columns,
+		pageCount: totalPages, // 4. Beri tahu tabel berapa total halaman
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
+		onGlobalFilterChange: setGlobalFilter,
+		onPaginationChange: setPagination,
+		manualPagination: true, // 5. Aktifkan mode paginasi manual
+		state: {
+			globalFilter,
+			pagination,
+		},
+	});
+
 	if (productsError || categoriesError) return <div>Failed to load data</div>;
-	if (!products || !categories) return <div>Loading...</div>;
+	if (!paginatedData || !categories) return <div>Loading...</div>;
 
 	const handleOpenDialog = (product = null) => {
 		if (product) {
@@ -103,7 +179,7 @@ export default function ProductsPage() {
 		if (!productToDelete) return;
 		try {
 			await deleteProductById(productToDelete.id);
-			mutate();
+			mutateProducts();
 			setIsDeleteDialogOpen(false);
 			setProductToDelete(null);
 		} catch (err) {
@@ -111,16 +187,17 @@ export default function ProductsPage() {
 		}
 	};
 
-	const getCategoryName = (id) => {
-		const category = categories.find((cat) => cat.id === id);
-		return category ? category.name : "N/A";
-	};
-
 	return (
-		<div className="p-8">
+		<div>
 			<div className="flex justify-between items-center mb-6">
 				<h1 className="text-3xl font-bold">Manajemen Produk</h1>
-				<Button onClick={() => handleOpenDialog()}>Tambah Produk</Button>
+				<div className="flex items-center space-x-4">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input placeholder="Cari nama atau kode..." value={globalFilter ?? ""} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10" />
+					</div>
+					<Button onClick={() => handleOpenDialog()}>Tambah Produk</Button>
+				</div>
 			</div>
 
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -201,46 +278,86 @@ export default function ProductsPage() {
 			<Card>
 				<Table>
 					<TableHeader>
-						<TableRow>
-							<TableHead className="p-4">Nama Produk</TableHead>
-							<TableHead>Kategori</TableHead>
-							<TableHead>Stok</TableHead>
-							<TableHead>Harga Modal</TableHead>
-							<TableHead>Harga Jual</TableHead>
-							<TableHead className="text-right p-4">Aksi</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{products.map((product) => (
-							<TableRow key={product.id}>
-								<TableCell className="p-4">{product.name}</TableCell>
-								<TableCell>{getCategoryName(product.categoryId)}</TableCell>
-								<TableCell>{product.stock}</TableCell>
-								<TableCell>
-									{new Intl.NumberFormat("id-ID", {
-										style: "currency",
-										currency: "IDR",
-									}).format(product.costPrice)}
-								</TableCell>
-								<TableCell>
-									{new Intl.NumberFormat("id-ID", {
-										style: "currency",
-										currency: "IDR",
-									}).format(product.sellingPrice)}
-								</TableCell>
-								<TableCell className="text-right p-4">
-									<Button variant="ghost" size="icon" onClick={() => handleOpenDialog(product)}>
-										<Edit className="h-4 w-4" />
-									</Button>
-									<Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleOpenDeleteDialog(product)}>
-										<Trash className="h-4 w-4" />
-									</Button>
-								</TableCell>
+						{table.getHeaderGroups().map((headerGroup) => (
+							<TableRow key={headerGroup.id}>
+								{headerGroup.headers.map((header) => (
+									<TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
+								))}
 							</TableRow>
 						))}
+					</TableHeader>
+					<TableBody>
+						{table.getRowModel().rows?.length ? (
+							table.getRowModel().rows.map((row) => (
+								<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+									{row.getVisibleCells().map((cell) => (
+										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+									))}
+								</TableRow>
+							))
+						) : (
+							<TableRow>
+								<TableCell colSpan={columns.length} className="h-24 text-center">
+									Tidak ada hasil.
+								</TableCell>
+							</TableRow>
+						)}
 					</TableBody>
 				</Table>
 			</Card>
+			<DataTablePagination table={table} />
+		</div>
+	);
+}
+
+// Komponen Paginasi dari ShadCN UI
+function DataTablePagination({ table }) {
+	return (
+		<div className="flex items-center justify-between px-2 pt-4">
+			<div className="flex-1 text-sm text-muted-foreground"></div>
+			<div className="flex items-center space-x-6 lg:space-x-8">
+				<div className="flex items-center space-x-2">
+					<p className="text-sm font-medium">Baris per halaman</p>
+					<Select
+						value={`${table.getState().pagination.pageSize}`}
+						onValueChange={(value) => {
+							table.setPageSize(Number(value));
+						}}
+					>
+						<SelectTrigger className="h-8 w-[70px]">
+							<SelectValue placeholder={table.getState().pagination.pageSize} />
+						</SelectTrigger>
+						<SelectContent side="top">
+							{[10, 20, 30, 40, 50].map((pageSize) => (
+								<SelectItem key={pageSize} value={`${pageSize}`}>
+									{pageSize}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="flex w-[120px] items-center justify-center text-sm font-medium">
+					Halaman {table.getState().pagination.pageIndex + 1} dari {table.getPageCount()}
+				</div>
+				<div className="flex items-center space-x-2">
+					<Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
+						<span className="sr-only">Go to first page</span>
+						<ChevronsLeft className="h-4 w-4" />
+					</Button>
+					<Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+						<span className="sr-only">Go to previous page</span>
+						<ChevronLeft className="h-4 w-4" />
+					</Button>
+					<Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+						<span className="sr-only">Go to next page</span>
+						<ChevronRight className="h-4 w-4" />
+					</Button>
+					<Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
+						<span className="sr-only">Go to last page</span>
+						<ChevronsRight className="h-4 w-4" />
+					</Button>
+				</div>
+			</div>
 		</div>
 	);
 }

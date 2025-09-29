@@ -76,9 +76,9 @@ export default function CategoriesPage() {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead className="w-[100px] p-4">No</TableHead>
-							<TableHead className="p-4">Nama Kategori</TableHead>
-							<TableHead className="text-right p-4">Aksi</TableHead>
+							<TableHead className="w-[100px] p-4 font-sans font-bold">No</TableHead>
+							<TableHead className="p-4 font-sans font-bold">Nama Kategori</TableHead>
+							<TableHead className="text-right p-4 font-sans font-bold">Aksi</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>

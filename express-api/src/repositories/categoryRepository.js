@@ -46,10 +46,23 @@ const deleteCategory = async (id) => {
 	});
 };
 
+const findCategoryByName = async (name) => {
+	return await prisma.category.findFirst({
+		where: {
+			name: {
+				equals: name,
+				mode: "insensitive", // Pencarian tidak case-sensitive
+			},
+			isDeleted: false,
+		},
+	});
+};
+
 module.exports = {
 	findAllCategory,
 	findCategoryById,
 	insertCategory,
 	updateCategory,
 	deleteCategory,
+	findCategoryByName,
 };

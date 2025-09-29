@@ -87,4 +87,6 @@ model TransactionItem {
 
   productId     BigInt
   product       Product @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
 }

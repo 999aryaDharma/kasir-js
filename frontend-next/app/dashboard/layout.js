@@ -1,6 +1,5 @@
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
 
 // TAMBAHKAN BARIS INI:
 // Baris ini memberitahu Next.js untuk selalu me-render halaman ini secara dinamis
