@@ -15,44 +15,46 @@ export function SessionProvider({ children }) {
 	const router = useRouter();
 	const pathname = usePathname();
 
-	// Gunakan SWR untuk mengambil data user.
-	// SWR akan secara otomatis menggunakan `apiFetch` yang sudah memiliki logika refresh token.
 	const {
 		data: user,
 		error,
 		isLoading,
 	} = useSWR(
-		// Hanya fetch jika kita tidak di halaman login/signup
-		!["/login", "/sign-up"].includes(pathname) ? "/auth/me" : null,
+		// Selalu coba fetch data user, SWR akan berhenti jika fetcher melempar error atau null
+		"/auth/me",
 		fetchUserLogin,
 		{
-			// Opsi untuk SWR
-			shouldRetryOnError: false, // Jangan coba lagi jika ada error (misal, 403)
-			revalidateOnFocus: false, // Tidak perlu re-fetch saat window focus
+			shouldRetryOnError: false,
+			revalidateOnFocus: false,
 		}
 	);
 
 	const isPublicPage = ["/login", "/sign-up"].includes(pathname);
 
 	useEffect(() => {
-		// Jika loading, jangan lakukan apa-apa
+		// Jangan lakukan apa-apa jika SWR masih dalam proses loading awal.
+		// Ini mencegah redirect yang tidak perlu sebelum status auth diketahui.
 		if (isLoading) return;
 
-		// Jika ada error (user tidak terautentikasi) dan kita berada di halaman yang dilindungi
+		// Kondisi 1: Terjadi error saat fetch user (misal: token tidak valid, kadaluwarsa, atau tidak ada)
+		// dan user sedang mencoba mengakses halaman yang dilindungi.
 		if (error && !isPublicPage) {
+			// Opsional: bersihkan token yang sudah tidak valid dari storage
+			localStorage.removeItem("accessToken");
+			localStorage.removeItem("refreshToken");
 			router.push("/login");
 		}
 
-		// Jika user berhasil login dan mencoba mengakses halaman login/signup
+		// Kondisi 2: Data user berhasil didapatkan (artinya user sudah login)
+		// dan user sedang berada di halaman publik (login/sign-up).
 		if (user && isPublicPage) {
 			router.push("/dashboard");
 		}
 	}, [user, error, isLoading, isPublicPage, router]);
 
-	// Selama loading atau jika kita di halaman publik, tampilkan children
-	// Ini mencegah "flicker" ke halaman login saat me-refresh halaman yang dilindungi
+	// Tampilkan layar loading jika kita belum tahu status login user (isLoading)
+	// dan user sedang berada di halaman yang dilindungi. Ini mencegah "kedipan" halaman login.
 	if (isLoading && !isPublicPage) {
-		// Anda bisa menampilkan komponen skeleton/loading di sini
 		return <div>Loading session...</div>;
 	}
 

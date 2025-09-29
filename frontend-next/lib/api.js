@@ -25,11 +25,10 @@ async function refreshToken() {
 		}
 	} catch (error) {
 		console.error("Session expired, logging out.", error);
-		// Jika refresh gagal, hapus token dan redirect ke login
+		// Jika refresh gagal, hapus token dan biarkan SWR menangani error.
+		// SessionProvider akan menangani redirect.
 		localStorage.removeItem("accessToken");
-		if (typeof window !== "undefined") {
-			window.location.href = "/login";
-		}
+		// HAPUS: window.location.href = "/login";
 		throw error;
 	}
 }
