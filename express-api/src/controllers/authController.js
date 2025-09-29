@@ -34,7 +34,7 @@ async function login(req, res) {
 		// Simpan refresh token di httpOnly cookie untuk keamanan
 		res.cookie("refreshToken", refreshToken, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production", // true di production
+			secure: process.env.NODE_ENV === "production",
 			sameSite: "lax", // 'lax' lebih cocok untuk auth cross-site seperti ini
 			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
 		});
@@ -50,7 +50,21 @@ async function login(req, res) {
 async function refreshToken(req, res) {
 	try {
 		const token = req.cookies.refreshToken;
-		const { accessToken } = await authService.refreshAccessToken(token);
+
+		if (!token) {
+			return errorResponse(res, "No refresh token provided", 403);
+		}
+
+		const { accessToken, refreshToken: newRefreshToken } = await authService.refreshAccessToken(token);
+
+		// Set new refresh token in cookie
+		res.cookie("refreshToken", newRefreshToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "lax",
+			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+		});
+
 		return successResponse(res, { accessToken }, "Token refreshed successfully");
 	} catch (error) {
 		const statusCode = error.statusCode || 401;

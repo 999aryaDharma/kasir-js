@@ -62,12 +62,18 @@ export default function ProductsPage() {
 	const columns = useMemo(
 		() => [
 			{
-				accessorKey: "name",
-				header: "Nama Produk",
+				id: "no",
+				header: () => <div className="pl-4">No</div>,
+				cell: ({ row }) => <div className="pl-4">{row.index + 1 + pagination.pageIndex * pagination.pageSize}</div>,
+				size: 10,
 			},
 			{
 				accessorKey: "code",
 				header: "Kode Produk",
+			},
+			{
+				accessorKey: "name",
+				header: "Nama Produk",
 			},
 			{
 				accessorKey: "categoryId",
@@ -86,9 +92,9 @@ export default function ProductsPage() {
 			},
 			{
 				id: "actions",
-				header: () => <div className="text-right">Aksi</div>,
+				header: () => <div className="text-right pr-4">Aksi</div>,
 				cell: ({ row }) => (
-					<div className="text-right">
+					<div className="text-right pr-2">
 						<Button variant="ghost" size="icon" onClick={() => handleOpenDialog(row.original)}>
 							<Edit className="h-4 w-4" />
 						</Button>
@@ -99,7 +105,7 @@ export default function ProductsPage() {
 				),
 			},
 		],
-		[categories] // Tambahkan categories sebagai dependensi
+		[categories, pagination.pageIndex, pagination.pageSize] // Dependensi yang lebih akurat
 	);
 
 	const table = useReactTable({
@@ -188,7 +194,7 @@ export default function ProductsPage() {
 	};
 
 	return (
-		<div>
+		<div className="p-4">
 			<div className="flex justify-between items-center mb-6">
 				<h1 className="text-3xl font-bold">Manajemen Produk</h1>
 				<div className="flex items-center space-x-4">

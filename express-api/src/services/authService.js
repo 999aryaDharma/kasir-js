@@ -35,7 +35,10 @@ async function login(username, password) {
 	const accessToken = generateAccessToken(accessTokenPayload);
 	const refreshToken = generateRefreshToken(refreshTokenPayload);
 
-	// Simpan refresh token di database untuk validasi saat refresh dan logout
+	// Hapus refresh token lama jika ada
+	await authRepository.deleteAllUserRefreshTokens(user.id);
+
+	// Simpan refresh token baru di database
 	await authRepository.saveRefreshToken(user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
 
 	return { accessToken, refreshToken };
@@ -47,20 +50,38 @@ async function refreshAccessToken(token) {
 	}
 
 	try {
+		// 1. Verifikasi tanda tangan (signature) dan masa berlaku JWT
 		const decoded = verifyRefreshToken(token);
-		const user = await authRepository.findUserById(decoded.userId);
 
-		if (!user || user.refreshToken !== token) {
+		// 2. Cari token di database untuk memastikan token belum dicabut (misal, karena logout)
+		const refreshTokenData = await authRepository.findRefreshToken(token);
+
+		// 3. Jika tidak ada di DB, atau user tidak terkait, token tidak valid (sudah di-logout)
+		if (!refreshTokenData || !refreshTokenData.user || refreshTokenData.userId !== decoded.userId) {
 			throw new AppError("Invalid refresh token", 403);
 		}
 
+		// 4. Buat access token dan refresh token baru (rotasi refresh token)
+		const { user } = refreshTokenData;
 		const accessTokenPayload = { userId: user.id, role: user.role };
-		const accessToken = generateAccessToken(accessTokenPayload);
+		const refreshTokenPayload = { userId: user.id };
 
-		return { accessToken };
+		const accessToken = generateAccessToken(accessTokenPayload);
+		const newRefreshToken = generateRefreshToken(refreshTokenPayload);
+
+		// 5. Simpan refresh token baru dan hapus yang lama
+		await authRepository.deleteRefreshToken(token);
+		await authRepository.saveRefreshToken(user.id, newRefreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+
+		return { accessToken, refreshToken: newRefreshToken };
 	} catch (error) {
-		// Jika token tidak valid (kadaluarsa, dll), lempar error
-		throw new AppError("Invalid or expired refresh token", 403);
+		// Tangani error dari jwt.verify (misal: TokenExpiredError, JsonWebTokenError)
+		if (error.name === "TokenExpiredError") {
+			await authRepository.deleteRefreshToken(token); // Hapus token kedaluwarsa dari DB
+			throw new AppError("Refresh token expired", 401);
+		}
+		// Lempar kembali error lain (termasuk AppError dari blok try)
+		throw error;
 	}
 }
 
@@ -69,8 +90,9 @@ async function logout(token) {
 		return; // Tidak ada token untuk di-invalidate
 	}
 	try {
-		const decoded = verifyRefreshToken(token);
-		await authRepository.updateUser(decoded.userId, { refreshToken: null });
+		// Cukup hapus refresh token dari database.
+		// Jika token tidak ada, prisma akan mengabaikannya.
+		await authRepository.deleteRefreshToken(token);
 	} catch (error) {
 		// Abaikan jika token tidak valid, karena tujuannya adalah logout
 		console.error("Error during logout, ignoring:", error.message);
@@ -83,7 +105,7 @@ async function getProfile(userId) {
 		throw new AppError("User not found", 404);
 	}
 	// Pastikan tidak mengirim password atau data sensitif lainnya
-	const { password, refreshToken, ...userProfile } = user;
+	const { password, ...userProfile } = user;
 	return userProfile;
 }
 

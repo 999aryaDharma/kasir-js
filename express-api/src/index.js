@@ -16,8 +16,10 @@ const errorMiddleware = require("./middlewares/errorMiddleware");
 // Middleware global
 app.use(
 	cors({
-		origin: ["http://localhost:8080", "http://localhost:3001"], // Izinkan hanya origin frontend Anda
+		origin: true, // Mengizinkan semua origin dalam development
 		credentials: true, // Izinkan pengiriman cookie
+		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"],
 	})
 );
 

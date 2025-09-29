@@ -11,12 +11,6 @@ async function findUserByUsername(username) {
 async function findUserById(id) {
 	return await prisma.user.findUnique({
 		where: { id },
-		// Pilih field yang ingin dikembalikan, jangan sertakan password
-		select: {
-			id: true,
-			username: true,
-			role: true,
-		},
 	});
 }
 
@@ -42,7 +36,7 @@ async function findRefreshToken(token) {
 }
 
 async function deleteRefreshToken(token) {
-	return await prisma.refreshToken.delete({
+	return await prisma.refreshToken.deleteMany({
 		where: {
 			token,
 		},
@@ -55,6 +49,14 @@ async function createUser(userData) {
 	});
 }
 
+async function deleteAllUserRefreshTokens(userId) {
+	return await prisma.refreshToken.deleteMany({
+		where: {
+			userId,
+		},
+	});
+}
+
 module.exports = {
 	findUserByUsername,
 	findUserById,
@@ -62,4 +64,5 @@ module.exports = {
 	findRefreshToken,
 	deleteRefreshToken,
 	createUser,
+	deleteAllUserRefreshTokens,
 };

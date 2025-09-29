@@ -84,7 +84,7 @@ export default function CategoriesPage() {
 					<TableBody>
 						{categories.map((cat, index) => (
 							<TableRow key={cat.id}>
-								<TableCell className="font-medium p-4">{index + 1}</TableCell>
+								<TableCell className="font-medium pl-4">{index + 1}</TableCell>
 								<TableCell className="p-4">{cat.name}</TableCell>
 								<TableCell className="text-right">
 									<Button variant="ghost" size="icon" onClick={() => handleOpenDialog(cat)}>
@@ -103,7 +103,7 @@ export default function CategoriesPage() {
 	}
 
 	return (
-		<div className="p-8">
+		<div className="p-4">
 			<div className="flex justify-between items-center mb-6">
 				<h1 className="text-3xl font-bold">Manajemen Kategori</h1>
 				<Button onClick={() => handleOpenDialog()}>Tambah Kategori</Button>

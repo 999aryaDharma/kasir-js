@@ -11,7 +11,7 @@ async function createProduct(data) {
 	return product;
 }
 
-async function updateProduct(data) {
+async function updateProduct(id, data) {
 	const { costPrice, sellingPrice } = data;
 	if (sellingPrice < costPrice) {
 		throw new AppError("Selling price must be greater than or equal to cost price", 400);
