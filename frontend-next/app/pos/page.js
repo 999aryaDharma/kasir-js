@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Keep for DataTablePagination
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Search, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { PlusCircle, Search, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User } from "lucide-react";
+import { UserDropdown } from "@/components/auth/UserDropdown";
 
 // Komponen untuk Tabel Produk
 function ProductsDataTable() {
@@ -139,7 +140,11 @@ function ProductsDataTable() {
 		//    `h-[calc(100vh-8rem)]` adalah perkiraan tinggi viewport dikurangi header dan padding.
 		<Card className="flex flex-col h-[calc(100vh-3rem)]">
 			<CardHeader>
-				<CardTitle>Daftar Produk</CardTitle>
+				<div className="flex justify-between items-center">
+					<CardTitle>Daftar Produk</CardTitle>
+					<UserDropdown />
+				</div>
+
 				<div className="mt-4 flex items-center space-x-4">
 					<div className="relative flex-1">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -401,20 +406,21 @@ function TransactionArea() {
 
 // Komponen Halaman Utama POS
 export default function POSPage() {
-	// Layout ini sudah baik, tidak perlu diubah.
-	// `items-start` memastikan kolom kanan tidak meregang.
 	return (
-		<div className="grid grid-cols-20 gap-6 p-6 items-start">
-			<div className="col-span-13">
-				<ProductsDataTable />
-			</div>
-			<div className="col-span-7">
-				<div className="sticky top-6">
-					{" "}
-					{/* `top-6` cocok dengan padding `p-6` */}
-					<TransactionArea />
+		<>
+			{/* <div className="flex justify-end p-4 border-b">
+				<UserDropdown />
+			</div> */}
+			<div className="grid grid-cols-20 gap-6 p-6 items-start">
+				<div className="col-span-13">
+					<ProductsDataTable />
+				</div>
+				<div className="col-span-7">
+					<div className="sticky top-6">
+						<TransactionArea />
+					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

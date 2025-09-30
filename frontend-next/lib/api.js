@@ -1,117 +1,122 @@
-// Ganti URL ini agar bisa diakses dari browser
+// URL API yang berjalan di container Docker
 const API_BASE_URL = process.env.EXPRESS_API_URL || "http://localhost:3000/api";
+import Cookies from "js-cookie";
 
 let isRefreshing = false;
 let refreshPromise = null;
 
 async function refreshToken() {
 	try {
-		// credentials: 'include' sangat penting untuk mengirim HttpOnly cookie
 		const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
 			method: "POST",
-			credentials: "include",
+			credentials: "include", // Penting untuk mengirim cookie refreshToken
 		});
-
 		if (!res.ok) {
 			throw new Error("Failed to refresh token");
 		}
-
 		const data = await res.json();
-		if (data.data.accessToken) {
-			localStorage.setItem("accessToken", data.data.accessToken);
+		if (data.data?.accessToken) {
+			Cookies.set("accessToken", data.data.accessToken, { expires: 1 / 24 }); // Expire dalam 1 jam
 			return data.data.accessToken;
-		} else {
-			throw new Error("No access token received from refresh");
 		}
+		throw new Error("No access token from refresh");
 	} catch (error) {
 		console.error("Session expired, logging out.", error);
-		// Jika refresh gagal, hapus token dan biarkan SWR menangani error.
-		// SessionProvider akan menangani redirect.
-		localStorage.removeItem("accessToken");
-		// HAPUS: window.location.href = "/login";
+		Cookies.remove("accessToken");
+		// Redirect ke login, pastikan ini hanya berjalan di client-side
+		if (typeof window !== "undefined") {
+			window.location.href = "/login";
+		}
 		throw error;
+	} finally {
+		isRefreshing = false;
+		refreshPromise = null;
 	}
 }
 
+// Helper function untuk API calls
 async function apiFetch(endpoint, options = {}) {
-	let token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-
+	let token = Cookies.get("accessToken");
 	const headers = {
 		"Content-Type": "application/json",
 		...options.headers,
 	};
 
-	if (token) {
-		headers["Authorization"] = `Bearer ${token}`;
-	}
+	if (token) headers["Authorization"] = `Bearer ${token}`;
 
-	let response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+	let response = await fetch(`${API_BASE_URL}${endpoint}`, {
+		...options,
+		headers,
+		credentials: "include", // Selalu sertakan credentials untuk cookies
+	});
 
-	if (response.status === 401) {
-		if (!isRefreshing) {
-			isRefreshing = true;
-			refreshPromise = refreshToken().finally(() => {
-				isRefreshing = false;
-				refreshPromise = null;
-			});
-		}
-
-		token = await refreshPromise;
-		headers["Authorization"] = `Bearer ${token}`;
-		response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-	}
-
-	return handleApiResponse(response);
-}
-
-async function handleApiResponse(response) {
-	if (response.status === 204) {
-		return { success: true, data: null };
-	}
-
-	// Cek jika response bukan JSON sebelum mencoba parse
-	const contentType = response.headers.get("content-type");
-	if (!contentType || !contentType.includes("application/json")) {
-		// Coba baca teks error, tapi jangan error jika body kosong
-		let errorText = "";
+	if (response.status === 401 && !isRefreshing) {
+		isRefreshing = true;
+		refreshPromise = refreshToken();
 		try {
-			errorText = await response.text();
-		} catch (e) {
-			// Abaikan jika body tidak bisa dibaca
+			const newToken = await refreshPromise;
+			headers["Authorization"] = `Bearer ${newToken}`;
+			// Ulangi request dengan token baru
+			response = await fetch(`${API_BASE_URL}${endpoint}`, {
+				...options,
+				headers,
+				credentials: "include",
+			});
+		} catch (refreshError) {
+			// Jika refresh gagal, lempar error asli
+			throw new Error(`Session expired. Please log in again. Original error: ${response.statusText}`);
 		}
-
-		// Jika status OK tapi tidak ada JSON, anggap sukses dengan data null
-		if (response.ok) {
-			return { success: true, data: null };
-		}
-
-		const error = new Error(`Server error: ${response.status} ${response.statusText}. Response is not valid JSON.`);
-		console.error("Non-JSON response body:", errorText);
-		error.response = response;
-		throw error;
 	}
 
-	const responseData = await response.json();
+	const data = await response.json();
 
-	if (!response.ok || responseData.success === false) {
-		const error = new Error(responseData.message || "An unknown API error occurred.");
-		error.response = response;
-		error.data = responseData;
-		throw error;
+	if (!response.ok) {
+		throw new Error(data.message || `HTTP error: ${response.status}`);
 	}
 
-	// Untuk endpoint login, kita butuh seluruh response, bukan hanya `data`
-	if (response.url.endsWith("/auth/login")) {
-		return responseData.data; // `data` berisi { accessToken }
+	// Simpan token setelah login berhasil
+	if (data.data?.accessToken && endpoint.includes("/auth/login")) {
+		Cookies.set("accessToken", data.data.accessToken, { expires: 1 / 24 }); // Expire dalam 1 jam
 	}
 
-	// Untuk endpoint lain, kembalikan bagian `data`
-	return responseData.data; // `data` berisi user, products, dll.
+	return data.data;
 }
 
-// --- CATEGORY API ---
-export async function fetchCategories() {
-	return apiFetch("/categories");
+// --- AUTH API ---
+export async function loginUser(credentials) {
+	return apiFetch("/auth/login", {
+		method: "POST",
+		body: JSON.stringify(credentials),
+	});
+}
+
+export async function signUpUser(data) {
+	return apiFetch("/auth/signup", {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+}
+
+export async function logoutUser() {
+	try {
+		// Panggil API untuk menghapus refresh token di server
+		await apiFetch("/auth/logout", { method: "POST" });
+	} catch (error) {
+		console.error("API logout failed, but proceeding with client-side logout:", error);
+	} finally {
+		// Selalu bersihkan cookie di client dan redirect, bahkan jika API gagal
+		Cookies.remove("accessToken");
+		window.location.replace("/login");
+	}
+}
+
+// --- Other API functions ---
+export async function fetchProducts(url) {
+	return apiFetch(url);
+}
+
+export async function fetchCategories(url) {
+	return apiFetch(url);
 }
 
 export async function createCategory(data) {
@@ -134,11 +139,6 @@ export async function deleteCategoryById(id) {
 	});
 }
 
-// --- PRODUCT API ---
-export async function fetchProducts(url) {
-	return apiFetch(url);
-}
-
 export async function createProduct(data) {
 	return apiFetch("/products", {
 		method: "POST",
@@ -159,7 +159,6 @@ export async function deleteProductById(id) {
 	});
 }
 
-// --- TRANSACTION API ---
 export async function createTransaction(data) {
 	return apiFetch("/transactions", {
 		method: "POST",
@@ -167,39 +166,10 @@ export async function createTransaction(data) {
 	});
 }
 
-// --- SUMMARY API ---
 export async function fetchSummary(url) {
 	return apiFetch(url);
 }
 
-// --- AUTH API ---
-export async function loginUser(credentials) {
-	// Login tidak memerlukan token, jadi panggil fetch langsung
-	const res = await fetch(`${API_BASE_URL}/auth/login`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(credentials),
-	});
-	return handleApiResponse(res);
-}
-
-export async function signUpUser(data) {
-	// Sign up tidak memerlukan token
-	const res = await fetch(`${API_BASE_URL}/auth/signup`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(data),
-	});
-	return handleApiResponse(res);
-}
-
-export async function logoutUser() {
-	// Logout memerlukan token, jadi gunakan apiFetch
-	return apiFetch("/auth/logout", {
-		method: "POST",
-	});
-}
-
-export async function fetchUserLogin(url) {
-	return apiFetch(url);
+export async function fetchUserProfile() {
+	return apiFetch("/auth/me");
 }

@@ -16,10 +16,11 @@ const errorMiddleware = require("./middlewares/errorMiddleware");
 // Middleware global
 app.use(
 	cors({
-		origin: true, // Mengizinkan semua origin dalam development
-		credentials: true, // Izinkan pengiriman cookie
+		origin: true,
+		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization"],
+		exposedHeaders: ["Set-Cookie"],
 	})
 );
 

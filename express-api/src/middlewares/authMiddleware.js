@@ -17,8 +17,17 @@ function authMiddleware(req, res, next) {
 
 		const decoded = verifyAccessToken(token);
 
+		// Verifikasi bahwa decoded memiliki field yang diperlukan
+		if (!decoded || !decoded.userId) {
+			throw new AppError("Invalid token structure", 401);
+		}
+
 		// Tempelkan informasi user ke object request
-		req.user = decoded;
+		req.user = {
+			userId: decoded.userId,
+			role: decoded.role,
+			permissions: decoded.permissions || [], // ✅ Tambahkan permissions ke req.user
+		};
 
 		next(); // Lanjutkan ke controller
 	} catch (error) {

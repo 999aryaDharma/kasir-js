@@ -1,25 +1,30 @@
 const AppError = require("../utils/AppError");
 
 /**
- * Middleware factory untuk otorisasi berdasarkan role.
- * @param {number[]} allowedRoles - Array berisi role yang diizinkan (misal: [1] untuk admin).
- * @returns {function} Middleware Express.
+ * Middleware factory untuk otorisasi berdasarkan permission.
+ * @param {string|string[]} requiredPermissions - Permission atau array of permissions yang dibutuhkan
+ * @returns {function} Middleware Express
  */
-function authorize(allowedRoles) {
+function authorize(requiredPermissions) {
 	return (req, res, next) => {
 		// Middleware ini harus dijalankan SETELAH authMiddleware
-		const userRole = req.user?.role;
+		const userPermissions = req.user?.permissions;
 
-		// Cek jika user memiliki role (angka 0 adalah role yang valid)
-		if (userRole === undefined || userRole === null) {
-			return next(new AppError("Authentication error: User role not found on token", 401));
+		if (!userPermissions) {
+			return next(new AppError("Authentication error: User permissions not found in token", 401));
 		}
 
-		if (allowedRoles.includes(userRole)) {
-			return next(); // Role diizinkan, lanjutkan ke controller
-		} else {
-			return next(new AppError("Forbidden: You do not have permission to perform this action", 403));
+		// Konversi single permission menjadi array
+		const permissions = Array.isArray(requiredPermissions) ? requiredPermissions : [requiredPermissions];
+
+		// Cek apakah user memiliki semua permission yang dibutuhkan
+		const hasAllPermissions = permissions.every((permission) => userPermissions.includes(permission));
+
+		if (hasAllPermissions) {
+			return next();
 		}
+
+		return next(new AppError("Forbidden: Insufficient permissions", 403));
 	};
 }
 

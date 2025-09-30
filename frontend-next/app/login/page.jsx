@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/form/auth-form";
 import { loginUser } from "@/lib/api";
+import { handleAuthSuccess } from "@/lib/authUtils";
 
 export default function Page() {
-	const router = useRouter();
 	const [formState, setFormState] = useState({ username: "", password: "" });
 	const [errors, setErrors] = useState({});
 	const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +21,18 @@ export default function Page() {
 		setErrors({});
 
 		try {
+			console.log("Login attempt with:", formState);
 			const data = await loginUser(formState);
-			// Simpan accessToken (misal di local storage atau context)
-			localStorage.setItem("accessToken", data.accessToken);
-			router.push("/dashboard"); // Redirect ke dashboard setelah login
+			console.log("Login success, data:", data);
+
+			if (!data || !data.accessToken) {
+				console.error("No access token in response");
+				throw new Error("Login failed: No access token received");
+			}
+
+			handleAuthSuccess(data);
 		} catch (error) {
+			console.error("Login error:", error);
 			setErrors({ api: error.message });
 		} finally {
 			setIsLoading(false);

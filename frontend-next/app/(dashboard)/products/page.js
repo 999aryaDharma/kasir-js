@@ -90,6 +90,12 @@ export default function ProductsPage() {
 				header: () => <div className="text-right">Harga Jual</div>,
 				cell: ({ row }) => <div className="text-right">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(row.getValue("sellingPrice"))}</div>,
 			},
+
+			{
+				accessorKey: "costPrice",
+				header: () => <div className="text-right">Harga Modal</div>,
+				cell: ({ row }) => <div className="text-right">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(row.getValue("costPrice"))}</div>,
+			},
 			{
 				id: "actions",
 				header: () => <div className="text-right pr-4">Aksi</div>,

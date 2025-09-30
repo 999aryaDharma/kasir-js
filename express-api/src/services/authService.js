@@ -29,11 +29,8 @@ async function login(username, password) {
 		throw new AppError("Invalid username or password", 401);
 	}
 
-	const accessTokenPayload = { userId: user.id, role: user.role };
-	const refreshTokenPayload = { userId: user.id };
-
-	const accessToken = generateAccessToken(accessTokenPayload);
-	const refreshToken = generateRefreshToken(refreshTokenPayload);
+	const accessToken = generateAccessToken(user);
+	const refreshToken = generateRefreshToken(user);
 
 	// Hapus refresh token lama jika ada
 	await authRepository.deleteAllUserRefreshTokens(user.id);
@@ -104,7 +101,8 @@ async function getProfile(userId) {
 	if (!user) {
 		throw new AppError("User not found", 404);
 	}
-	// Pastikan tidak mengirim password atau data sensitif lainnya
+
+	// Jangan kirim password dan data sensitif lainnya
 	const { password, ...userProfile } = user;
 	return userProfile;
 }
