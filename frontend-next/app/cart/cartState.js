@@ -21,6 +21,13 @@ const cartReducer = (state, action) => {
 				return { ...state, items: [...state.items, newItem] };
 			}
 		}
+		case "UPDATE_QUANTITY": {
+			const currentQuantity = action.payload.quantityChange;
+			return {
+				...state,
+				items: state.items.map((item) => (item.id === action.payload.id ? { ...item, quantity: Math.max(1, item.quantity + currentQuantity) } : item)).filter((item) => item.quantity > 0), // Hapus item jika quantity <= 0
+			};
+		}
 		case "REMOVE_ITEM": {
 			return {
 				...state,

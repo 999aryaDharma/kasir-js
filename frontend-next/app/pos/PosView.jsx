@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Search, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User } from "lucide-react";
+import { PlusCircle, Search, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User, Minus, Plus } from "lucide-react";
 
 // ... (Semua komponen helper seperti ProductsDataTable, DataTablePagination, TransactionArea tetap di sini)
 // Komponen untuk Tabel Produk
@@ -130,7 +130,7 @@ function ProductsDataTable() {
 	};
 
 	return (
-		<Card className="flex flex-col h-[calc(100vh-8rem)]">
+		<Card className="flex flex-col h-[calc(100vh-3rem)]">
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<CardTitle>Daftar Produk</CardTitle>
@@ -303,7 +303,7 @@ function TransactionArea() {
 		}
 	};
 	return (
-		<Card>
+		<Card className="flex flex-col h-[calc(100vh-3rem)]">
 			<CardHeader>
 				<CardTitle>Keranjang</CardTitle>
 				<CardDescription>{cartItems.length > 0 ? `Terdapat ${cartItems.length} item di keranjang.` : "Keranjang masih kosong."}</CardDescription>
@@ -315,9 +315,19 @@ function TransactionArea() {
 							<div key={item.id} className="flex justify-between items-center">
 								<div>
 									<p className="font-medium">{item.name}</p>
-									<p className="text-sm text-muted-foreground">
-										{formatCurrency(item.sellingPrice)} x {item.quantity}
-									</p>
+									<div className="flex items-center space-x-2">
+										<p className="text-sm text-muted-foreground">
+											{formatCurrency(item.sellingPrice)} x {item.quantity}
+										</p>
+										<div className="flex items-center ml-3 space-x-2">
+											<Button variant="outline" size="icon" className="h-6 w-6  hover:bg-green-50 mr-2" onClick={() => dispatch({ type: "UPDATE_QUANTITY", payload: { id: item.id, quantityChange: 1 } })}>
+												<Plus />
+											</Button>
+											<Button variant="outline" size="icon" className="h-6 w-6  hover:bg-red-50" onClick={() => dispatch({ type: "UPDATE_QUANTITY", payload: { id: item.id, quantityChange: -1 } })}>
+												<Minus className="h-4 w-4" />
+											</Button>
+										</div>
+									</div>
 								</div>
 								<div className="flex items-center space-x-2">
 									<p className="font-semibold">{formatCurrency(item.sellingPrice * item.quantity)}</p>
@@ -333,7 +343,7 @@ function TransactionArea() {
 				)}
 			</CardContent>
 			<Separator />
-			<CardContent className="space-y-4 pt-6">
+			<CardContent className="space-y-3 pt-3.5">
 				<div className="space-y-2">
 					<div className="flex justify-between">
 						<span className="text-muted-foreground">Subtotal</span>
