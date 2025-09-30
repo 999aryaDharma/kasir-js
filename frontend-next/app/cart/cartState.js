@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useReducer, useContext } from "react";
+import React, { createContext, useReducer, useContext, useEffect } from "react";
 
 const CartStateContext = createContext();
 const CartDispatchContext = createContext();
@@ -13,11 +13,7 @@ const cartReducer = (state, action) => {
 				// Jika item sudah ada, tambahkan quantity
 				return {
 					...state,
-					items: state.items.map((item) =>
-						item.id === action.payload.id
-							? { ...item, quantity: item.quantity + 1 }
-							: item
-					),
+					items: state.items.map((item) => (item.id === action.payload.id ? { ...item, quantity: item.quantity + 1 } : item)),
 				};
 			} else {
 				// Jika item baru, tambahkan ke keranjang
@@ -34,6 +30,10 @@ const cartReducer = (state, action) => {
 		case "CLEAR_CART": {
 			return { ...state, items: [] };
 		}
+
+		case "INITIALIZE_CART": {
+			return action.payload;
+		}
 		// Anda bisa menambahkan case lain seperti UPDATE_QUANTITY, dll.
 		default: {
 			throw new Error(`Unhandled action type: ${action.type}`);
@@ -41,12 +41,30 @@ const cartReducer = (state, action) => {
 	}
 };
 
-const initialState = {
-	items: [],
+const getInitialCartState = () => {
+	if (typeof window !== "undefined") {
+		try {
+			const storeCart = sessionStorage.getItem("cart");
+			if (storeCart) {
+				return JSON.parse(storeCart);
+			}
+		} catch (error) {
+			console.error("Failed to parse cart from sessionStorage:", error);
+			return { items: [] };
+		}
+	}
 };
 
 export const CartProvider = ({ children }) => {
-	const [state, dispatch] = useReducer(cartReducer, initialState);
+	const [state, dispatch] = useReducer(cartReducer, getInitialCartState());
+
+	useEffect(() => {
+		try {
+			sessionStorage.setItem("cart", JSON.stringify(state));
+		} catch (error) {
+			console.error("Failed to save cart to sessionStorage:", error);
+		}
+	}, [state]); // Dependensi [state] memastikan ini berjalan hanya saat state berubah
 
 	return (
 		<CartStateContext.Provider value={state}>
@@ -70,4 +88,4 @@ export const useCartDispatch = () => {
 		throw new Error("useCartDispatch must be used within a CartProvider");
 	}
 	return context;
-}
+};
