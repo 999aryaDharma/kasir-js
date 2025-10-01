@@ -14,7 +14,21 @@ const ROLES = {
 
 // Define permissions for each role
 const ROLE_PERMISSIONS = {
-	[ROLES.ADMIN]: ["manage:users", "manage:products", "manage:categories", "view:reports", "manage:transactions", "access:dashboard"],
+	[ROLES.ADMIN]: Array.from(
+		new Set([
+			// Gunakan Set untuk menghapus duplikat secara otomatis
+			"manage:users",
+			"manage:products",
+			"manage:categories",
+			"view:reports",
+			"manage:transactions",
+			"access:dashboard",
+			"view:products",
+			"view:categories",
+			"create:transactions",
+			"access:pos",
+		])
+	),
 	[ROLES.CASHIER]: ["create:transactions", "view:products", "view:categories", "access:pos"],
 };
 

@@ -60,10 +60,9 @@ async function refreshAccessToken(token) {
 
 		// 4. Buat access token dan refresh token baru (rotasi refresh token)
 		const { user } = refreshTokenData;
-		const accessTokenPayload = { userId: user.id, role: user.role };
 		const refreshTokenPayload = { userId: user.id };
 
-		const accessToken = generateAccessToken(accessTokenPayload);
+		const accessToken = generateAccessToken(user); // ✅ Gunakan objek user lengkap
 		const newRefreshToken = generateRefreshToken(refreshTokenPayload);
 
 		// 5. Simpan refresh token baru dan hapus yang lama
