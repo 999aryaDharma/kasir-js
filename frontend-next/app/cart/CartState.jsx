@@ -25,7 +25,7 @@ const cartReducer = (state, action) => {
 			const currentQuantity = action.payload.quantityChange;
 			return {
 				...state,
-				items: state.items.map((item) => (item.id === action.payload.id ? { ...item, quantity: Math.max(1, item.quantity + currentQuantity) } : item)).filter((item) => item.quantity > 0), // Hapus item jika quantity <= 0
+				items: state.items.map((item) => (item.id === action.payload.id ? { ...item, quantity: item.quantity + currentQuantity } : item)).filter((item) => item.quantity > 0), // Hapus item jika quantity menjadi 0 atau kurang
 			};
 		}
 		case "REMOVE_ITEM": {

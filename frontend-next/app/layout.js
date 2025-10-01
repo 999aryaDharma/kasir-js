@@ -1,7 +1,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/auth/SessionProvider";
-import { CartProvider } from "@/app/cart/cartState.js";
+import { CartProvider } from "@/app/cart/CartState";
 import { TokenInjector } from "@/components/auth/TokenInjector";
 
 const inter = Inter({ subsets: ["latin"] });

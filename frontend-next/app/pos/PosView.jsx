@@ -6,7 +6,7 @@ import useSWR, { mutate } from "swr";
 import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 import { useDebounce } from "use-debounce";
 
-import { useCartState, useCartDispatch } from "@/app/cart/cartState";
+import { useCartState, useCartDispatch } from "@/app/cart/CartState";
 import { UserDropdown } from "@/components/auth/UserDropdown";
 import { fetchProducts, fetchCategories, createTransaction } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -310,7 +310,7 @@ function TransactionArea() {
 			</CardHeader>
 			<CardContent className="flex-1 overflow-y-auto min-h-[150px]">
 				{cartItems.length > 0 ? (
-					<div className="space-y-4">
+					<div className="space-y-4.5">
 						{cartItems.map((item) => (
 							<div key={item.id} className="flex justify-between items-center">
 								<div>
