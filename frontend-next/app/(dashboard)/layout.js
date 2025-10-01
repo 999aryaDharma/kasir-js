@@ -8,14 +8,17 @@ export const dynamic = "force-dynamic";
 
 export default function DashboardLayout({ children }) {
 	return (
-		// Batasi tinggi layout ke tinggi layar dan sembunyikan overflow di level ini
-		<div className="flex h-screen overflow-hidden bg-gray-100">
+		// Mengubah ini menjadi flexbox kolom dengan tinggi layar penuh
+		<div className="flex h-screen overflow-hidden bg-gray-50">
 			<Sidebar />
-			{/* Kontainer utama untuk header dan konten */}
-			<div className="flex flex-1 flex-col overflow-hidden">
-				<Header />
+			{/* Menambahkan overflow-y-auto di sini untuk menjadi container scroll utama */}
+			{/* Kontainer untuk Header dan Konten Utama */}
+			<div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+				<div className="pt-1  top-0 z-10 bg-gray-50 shadow-sm">
+					<Header />
+				</div>
 				{/* Area konten utama yang bisa di-scroll */}
-				<main className="flex-1 overflow-y-auto p-8">{children}</main>
+				<main className="flex-1 p-8">{children}</main>
 			</div>
 		</div>
 	);

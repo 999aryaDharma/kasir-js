@@ -3,6 +3,7 @@ import "./globals.css";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { CartProvider } from "@/app/cart/CartState";
 import { TokenInjector } from "@/components/auth/TokenInjector";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,7 +18,10 @@ export default function RootLayout({ children }) {
 			<body className={inter.className}>
 				<SessionProvider>
 					<TokenInjector>
-						<CartProvider>{children}</CartProvider>
+						<CartProvider>
+							{children}
+							<Toaster richColors position="top-right" />
+						</CartProvider>
 					</TokenInjector>
 				</SessionProvider>
 			</body>

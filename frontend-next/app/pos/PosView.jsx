@@ -27,7 +27,7 @@ function ProductsDataTable() {
 		pageIndex: 0,
 		pageSize: 10,
 	});
-	const [debouncedGlobalFilter] = useDebounce(globalFilter, 500);
+	const [debouncedGlobalFilter] = useDebounce(globalFilter, 1000);
 
 	const constructUrl = () => {
 		const params = new URLSearchParams();
@@ -122,9 +122,6 @@ function ProductsDataTable() {
 		},
 	});
 
-	if (productsError || categoriesError) return <div>Gagal memuat data.</div>;
-	if (!paginatedData || !categories) return <div>Memuat produk...</div>;
-
 	const handleCategoryFilterChange = (value) => {
 		table.getColumn("categoryName")?.setFilterValue(value === "all" ? undefined : value);
 	};
@@ -148,7 +145,7 @@ function ProductsDataTable() {
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="all">Semua Kategori</SelectItem>
-							{categories.map((cat) => (
+							{categories?.map((cat) => (
 								<SelectItem key={cat.id} value={cat.name}>
 									{cat.name}
 								</SelectItem>
@@ -170,7 +167,19 @@ function ProductsDataTable() {
 							))}
 						</TableHeader>
 						<TableBody>
-							{table.getRowModel().rows?.length ? (
+							{productsError || categoriesError ? (
+								<TableRow>
+									<TableCell colSpan={columns.length} className="h-24 text-center text-red-500">
+										Gagal memuat data.
+									</TableCell>
+								</TableRow>
+							) : !paginatedData ? (
+								<TableRow>
+									<TableCell colSpan={columns.length} className="h-24 text-center">
+										Memuat produk...
+									</TableCell>
+								</TableRow>
+							) : table.getRowModel().rows?.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow key={row.id}>
 										{row.getVisibleCells().map((cell) => (
@@ -221,7 +230,7 @@ function DataTablePagination({ table }) {
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="flex w-[120px] items-center justify-center text-sm font-medium">
+				<div className="flex w-[120px] items-center justify-center text-xs font-medium">
 					Halaman {table.getState().pagination.pageIndex + 1} dari {table.getPageCount()}
 				</div>
 				<div className="flex items-center space-x-2">

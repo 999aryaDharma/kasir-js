@@ -31,11 +31,6 @@ export async function middleware(request) {
 		if (role === 0 && !pathname.startsWith("/pos")) {
 			return NextResponse.redirect(new URL("/pos", request.url));
 		}
-
-		// Admin (role 1) tidak boleh akses /pos
-		if (role === 1 && pathname.startsWith("/pos")) {
-			return NextResponse.redirect(new URL("/dashboard", request.url));
-		}
 	}
 
 	return NextResponse.next();

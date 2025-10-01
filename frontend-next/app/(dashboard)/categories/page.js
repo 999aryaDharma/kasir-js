@@ -11,8 +11,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Edit, Trash } from "lucide-react";
+import { toast } from "sonner";
+import { Search } from "lucide-react";
+import { useDebounce } from "use-debounce";
 
 export default function CategoriesPage() {
+	// State untuk tanstack-table
+	const [globalFilter, setGlobalFilter] = useState("");
+	const [pagination, setPagination] = useState({
+		pageIndex: 0,
+		pageSize: 10,
+	});
+	const [debouncedGlobalFilter] = useDebounce(globalFilter, 1000); // Debounce 1000ms
+
+	// 1. Buat URL dinamis yang menyertakan parameter paginasi DAN pencarian
+	const constructUrl = () => {
+		const params = new URLSearchParams();
+		params.append("page", pagination.pageIndex + 1);
+		params.append("limit", pagination.pageSize);
+		if (debouncedGlobalFilter) {
+			params.append("search", debouncedGlobalFilter);
+		}
+		return `/products?${params.toString()}`;
+	};
+
 	// 2. Gunakan `fetchCategories` langsung sebagai fetcher
 	const { data: categories, error, mutate } = useSWR("/categories", fetchCategories);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,15 +56,18 @@ export default function CategoriesPage() {
 			if (currentCategory) {
 				// Mode Edit
 				await updateCategory(currentCategory.id, { name: categoryName });
+				toast.success("Kategori berhasil diperbarui.");
 			} else {
 				// Mode Tambah
 				await createCategory({ name: categoryName });
+				toast.success("Kategori baru berhasil ditambahkan.");
 			}
 			mutate(); // Beri tahu SWR untuk mengambil ulang data
 			setIsDialogOpen(false); // Tutup dialog
 		} catch (err) {
 			console.error("Failed to save category", err);
-			// Anda bisa menambahkan notifikasi error untuk pengguna di sini
+			// Tampilkan notifikasi error
+			toast.error(err.message || "Gagal menyimpan kategori.");
 		}
 	};
 
@@ -59,9 +84,11 @@ export default function CategoriesPage() {
 			await deleteCategoryById(categoryToDelete.id);
 			mutate(); // Ambil ulang data
 			setIsDeleteDialogOpen(false); // Tutup dialog
+			toast.success(`Kategori "${categoryToDelete.name}" berhasil dihapus.`);
 			setCategoryToDelete(null); // Reset state
 		} catch (err) {
 			console.error("Failed to delete category", err);
+			toast.error(err.message || "Gagal menghapus kategori.");
 		}
 	};
 
@@ -103,9 +130,16 @@ export default function CategoriesPage() {
 	}
 
 	return (
-		<div className="p-4">
+		<div className="">
 			<div className="flex justify-between items-center mb-6">
 				<h1 className="text-3xl font-bold">Manajemen Kategori</h1>
+				<div className="flex items-center space-x-4">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input placeholder="Cari nama atau kode..." value={globalFilter ?? ""} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10" />
+					</div>
+				</div>
+
 				<Button onClick={() => handleOpenDialog()}>Tambah Kategori</Button>
 			</div>
 

@@ -8,11 +8,14 @@ export const dynamic = "force-dynamic";
 
 export default function DashboardLayout({ children }) {
 	return (
-		<div className="flex min-h-screen">
+		// Mengubah ini menjadi flexbox kolom dengan tinggi layar penuh
+		<div className="flex h-screen bg-gray-50">
 			<Sidebar />
+			{/* Menambahkan overflow-y-auto di sini untuk menjadi container scroll utama */}
 			<div className="flex-1 flex flex-col">
 				<Header />
-				<main className="flex-1 p-12 bg-gray-50">{children}</main>
+				{/* Konten utama sekarang memiliki padding dan akan di-scroll oleh parent-nya */}
+				<main className="flex-1 overflow-y-auto p-8">{children}</main>
 			</div>
 		</div>
 	);

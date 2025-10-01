@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
+import { useDebounce } from "use-debounce";
 import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 import useSWR, { mutate } from "swr";
 // 1. Ganti fetcher dan mutator dengan fungsi API yang spesifik
@@ -19,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Edit, Trash, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { toast } from "sonner";
 
 const initialFormState = {
 	id: null,
@@ -37,10 +39,19 @@ export default function ProductsPage() {
 		pageIndex: 0,
 		pageSize: 10,
 	});
+	const [debouncedGlobalFilter] = useDebounce(globalFilter, 1000); // Debounce 1000ms
 
-	// 1. Buat URL dinamis untuk SWR
-	const productsUrl = `/products?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`;
-	const { data: paginatedData, error: productsError, mutate: mutateProducts } = useSWR(productsUrl, fetchProducts);
+	// 1. Buat URL dinamis yang menyertakan parameter paginasi DAN pencarian
+	const constructUrl = () => {
+		const params = new URLSearchParams();
+		params.append("page", pagination.pageIndex + 1);
+		params.append("limit", pagination.pageSize);
+		if (debouncedGlobalFilter) {
+			params.append("search", debouncedGlobalFilter);
+		}
+		return `/products?${params.toString()}`;
+	};
+	const { data: paginatedData, error: productsError, mutate: mutateProducts } = useSWR(constructUrl, fetchProducts);
 	const { data: categories, error: categoriesError } = useSWR("/categories", fetchCategories);
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -53,6 +64,58 @@ export default function ProductsPage() {
 	const products = paginatedData?.data || [];
 	const totalPages = paginatedData?.meta?.totalPages || 1;
 	const isEditing = !!productForm.id;
+
+	const handleOpenDialog = (product = null) => {
+		if (product) {
+			setProductForm({
+				id: product.id,
+				name: product.name,
+				stock: String(product.stock || ""),
+				costPrice: String(product.costPrice || ""),
+				sellingPrice: String(product.sellingPrice || ""),
+				categoryId: String(product.categoryId || ""),
+			});
+		} else {
+			setProductForm(initialFormState);
+		}
+		setFormError(null); // Reset error setiap kali dialog dibuka
+		setIsDialogOpen(true);
+	};
+
+	const handleOpenDeleteDialog = (product) => {
+		setProductToDelete(product);
+		setIsDeleteDialogOpen(true);
+	};
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setFormError(null); // Reset error sebelum submit
+
+		const body = {
+			name: productForm.name,
+			stock: parseInt(productForm.stock, 10) || 0,
+			costPrice: parseFloat(productForm.costPrice) || 0,
+			sellingPrice: parseFloat(productForm.sellingPrice) || 0,
+			categoryId: parseInt(productForm.categoryId, 10),
+		};
+
+		try {
+			// 3. Panggil fungsi API yang sesuai: update atau create
+			if (isEditing) {
+				await updateProduct(productForm.id, body);
+				toast.success("Produk berhasil diperbarui.");
+			} else {
+				await createProduct(body);
+				toast.success("Produk baru berhasil ditambahkan.");
+			}
+			mutateProducts(); // Re-fetch products
+			setIsDialogOpen(false);
+		} catch (err) {
+			console.error("Failed to save product", err);
+			setFormError(err.message || "Gagal menyimpan produk. Silakan coba lagi.");
+			toast.error(err.message || "Gagal menyimpan produk.");
+		}
+	};
 
 	const getCategoryName = (id) => {
 		const category = categories?.find((cat) => cat.id === id);
@@ -123,6 +186,7 @@ export default function ProductsPage() {
 		getFilteredRowModel: getFilteredRowModel(),
 		onGlobalFilterChange: setGlobalFilter,
 		onPaginationChange: setPagination,
+		manualFiltering: true, // Beri tahu tabel bahwa filtering ditangani server
 		manualPagination: true, // 5. Aktifkan mode paginasi manual
 		state: {
 			globalFilter,
@@ -133,58 +197,9 @@ export default function ProductsPage() {
 	if (productsError || categoriesError) return <div>Failed to load data</div>;
 	if (!paginatedData || !categories) return <div>Loading...</div>;
 
-	const handleOpenDialog = (product = null) => {
-		if (product) {
-			setProductForm({
-				id: product.id,
-				name: product.name,
-				stock: String(product.stock || ""),
-				costPrice: String(product.costPrice || ""),
-				sellingPrice: String(product.sellingPrice || ""),
-				categoryId: String(product.categoryId || ""),
-			});
-		} else {
-			setProductForm(initialFormState);
-		}
-		setFormError(null); // Reset error setiap kali dialog dibuka
-		setIsDialogOpen(true);
-	};
-
 	const handleInputChange = (e) => {
 		const { name, value } = e.target;
 		setProductForm((prev) => ({ ...prev, [name]: value }));
-	};
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setFormError(null); // Reset error sebelum submit
-
-		const body = {
-			name: productForm.name,
-			stock: parseInt(productForm.stock, 10) || 0,
-			costPrice: parseFloat(productForm.costPrice) || 0,
-			sellingPrice: parseFloat(productForm.sellingPrice) || 0,
-			categoryId: parseInt(productForm.categoryId, 10),
-		};
-
-		try {
-			// 3. Panggil fungsi API yang sesuai: update atau create
-			if (isEditing) {
-				await updateProduct(productForm.id, body);
-			} else {
-				await createProduct(body);
-			}
-			mutateProducts(); // Re-fetch products
-			setIsDialogOpen(false);
-		} catch (err) {
-			console.error("Failed to save product", err);
-			setFormError(err.message || "Gagal menyimpan produk. Silakan coba lagi.");
-		}
-	};
-
-	const handleOpenDeleteDialog = (product) => {
-		setProductToDelete(product);
-		setIsDeleteDialogOpen(true);
 	};
 
 	const confirmDelete = async () => {
@@ -194,13 +209,15 @@ export default function ProductsPage() {
 			mutateProducts();
 			setIsDeleteDialogOpen(false);
 			setProductToDelete(null);
+			toast.success(`Produk "${productToDelete.name}" berhasil dihapus.`);
 		} catch (err) {
 			console.error("Failed to delete product", err);
+			toast.error(err.message || "Gagal menghapus produk.");
 		}
 	};
 
 	return (
-		<div className="p-4">
+		<div className="">
 			<div className="flex justify-between items-center mb-6">
 				<h1 className="text-3xl font-bold">Manajemen Produk</h1>
 				<div className="flex items-center space-x-4">
@@ -323,7 +340,7 @@ export default function ProductsPage() {
 }
 
 // Komponen Paginasi dari ShadCN UI
-function DataTablePagination({ table }) {
+const DataTablePagination = memo(function DataTablePagination({ table }) {
 	return (
 		<div className="flex items-center justify-between px-2 pt-4">
 			<div className="flex-1 text-sm text-muted-foreground"></div>
@@ -372,4 +389,4 @@ function DataTablePagination({ table }) {
 			</div>
 		</div>
 	);
-}
+});
