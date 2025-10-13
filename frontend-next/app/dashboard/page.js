@@ -7,10 +7,13 @@ import { formatCurrency } from "@/lib/utils";
 
 export default function DashboardPage() {
 	// Pindahkan hook SWR ke dalam komponen
-	const { data: summary, error } = useSWR("/summary", fetchSummary);
+	const { data: summaryResponse, error } = useSWR("/summary", fetchSummary);
 
 	if (error) return <div>Gagal memuat data ringkasan.</div>;
-	if (!summary) return <div>Memuat...</div>;
+	if (!summaryResponse) return <div>Memuat...</div>;
+
+	// Ambil data dari response, baik langsung maupun dari property data
+	const summary = summaryResponse.data || summaryResponse;
 
 	return (
 		<div>

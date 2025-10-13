@@ -27,9 +27,9 @@ async function main() {
 	// ========== 1. BUAT USERS ==========
 	console.log("👥 Creating users...");
 	const usersData = [
-		{ username: "admin", password: "admin123", role: 0 },
-		{ username: "arya", password: "kasir123", role: 1 },
-		{ username: "budi", password: "kasir123", role: 1 },
+		{ username: "admin", password: "admin123", role: 1 },
+		{ username: "arya", password: "kasir123", role: 0 },
+		{ username: "budi", password: "kasir123", role: 0 },
 	];
 	for (const userData of usersData) {
 		const hashedPassword = await bcrypt.hash(userData.password, 10);

@@ -106,9 +106,11 @@ const getPaginatedProducts = async (req, res) => {
 		limit = parseInt(limit, 10);
 		if (isNaN(page) || page < 1) page = 1;
 		if (isNaN(limit) || limit < 1) limit = 10;
+
 		// Teruskan semua parameter ke service
 		const products = await productService.getPaginatedProducts({ page, limit, search, category });
 		return successResponse(res, products, "Products fetched successfully");
+		
 	} catch (error) {
 		console.error("Error getting paginated products:", error);
 		return errorResponse(res, "Error getting products", 500);

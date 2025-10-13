@@ -5,11 +5,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# # Copy semua kode ke container (nanti di override pakai volume)
-# COPY . .
-
 ENV NEXT_PUBLIC_API_URL=http://localhost:3000/api
+ENV NODE_ENV=development
 
-EXPOSE 3000
+EXPOSE 8000
 
 CMD ["npm", "run", "dev"]

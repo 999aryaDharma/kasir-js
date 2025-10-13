@@ -54,19 +54,19 @@ services:
     container_name: kasir_pos_frontend
     restart: always
     ports:
-      - "8080:3000"
+      - "8000:8000"
     depends_on:
       - express-api
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3000/api
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+      - NODE_ENV=development
+      - NEXT_WATCH=true
 
     volumes:
       - ./frontend-next:/app
       - /app/node_modules
-    # TAMBAHKAN BARIS INI:
-    # Memaksa container menjalankan development server untuk hot-reloading
     command: npm run dev
 
 volumes:

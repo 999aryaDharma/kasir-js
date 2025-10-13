@@ -1,392 +1,521 @@
 "use client";
 
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { useDebounce } from "use-debounce";
-import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
-import useSWR, { mutate } from "swr";
-// 1. Ganti fetcher dan mutator dengan fungsi API yang spesifik
 import {
-	fetchProducts,
-	createProduct,
-	updateProduct,
-	deleteProductById,
-	fetchCategories, // Tambahkan ini
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import useSWR from "swr";
+import {
+  fetchProducts,
+  createProduct,
+  updateProduct,
+  deleteProductById,
+  fetchCategories,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DataTablePagination from "@/components/DataTablePagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, Trash, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import {
+  Edit,
+  Trash,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { toast } from "sonner";
+import { OptimizedSearch } from "@/components/OptimizedSearch"; // Import komponen search
 
 const initialFormState = {
-	id: null,
-	name: "",
-	stock: "",
-	costPrice: "",
-	sellingPrice: "",
-	categoryId: "",
-	// 'code' tidak perlu ada di form state
+  id: null,
+  name: "",
+  stock: "",
+  costPrice: "",
+  sellingPrice: "",
+  categoryId: "",
 };
 
 export default function ProductsPage() {
-	// State untuk tanstack-table
-	const [globalFilter, setGlobalFilter] = useState("");
-	const [pagination, setPagination] = useState({
-		pageIndex: 0,
-		pageSize: 10,
-	});
-	const [debouncedGlobalFilter] = useDebounce(globalFilter, 1000); // Debounce 1000ms
+  // State untuk pencarian (hanya menyimpan search query final)
+  const [searchQuery, setSearchQuery] = useState("");
 
-	// 1. Buat URL dinamis yang menyertakan parameter paginasi DAN pencarian
-	const constructUrl = () => {
-		const params = new URLSearchParams();
-		params.append("page", pagination.pageIndex + 1);
-		params.append("limit", pagination.pageSize);
-		if (debouncedGlobalFilter) {
-			params.append("search", debouncedGlobalFilter);
-		}
-		return `/products?${params.toString()}`;
-	};
-	const { data: paginatedData, error: productsError, mutate: mutateProducts } = useSWR(constructUrl, fetchProducts);
-	const { data: categories, error: categoriesError } = useSWR("/categories", fetchCategories);
+  // State untuk paginasi
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [productForm, setProductForm] = useState(initialFormState);
-	const [formError, setFormError] = useState(null); // State untuk pesan error
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-	const [productToDelete, setProductToDelete] = useState(null);
+  // KUNCI UTAMA: Gunakan useMemo untuk URL agar stabil
+  const productsUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append("page", String(pagination.pageIndex + 1));
+    params.append("limit", String(pagination.pageSize));
+    if (searchQuery) {
+      params.append("search", searchQuery);
+    }
+    return `/products?${params.toString()}`;
+  }, [pagination.pageIndex, pagination.pageSize, searchQuery]);
 
-	// 2. Ekstrak data produk dan informasi paginasi
-	const products = paginatedData?.data || [];
-	const totalPages = paginatedData?.meta?.totalPages || 1;
-	const isEditing = !!productForm.id;
+  // Fetch data
+  const {
+    data: paginatedData,
+    error: productsError,
+    mutate: mutateProducts,
+    isValidating,
+  } = useSWR(productsUrl, fetchProducts, {
+    keepPreviousData: true,
+    revalidateOnFocus: false,
+  });
 
-	const handleOpenDialog = (product = null) => {
-		if (product) {
-			setProductForm({
-				id: product.id,
-				name: product.name,
-				stock: String(product.stock || ""),
-				costPrice: String(product.costPrice || ""),
-				sellingPrice: String(product.sellingPrice || ""),
-				categoryId: String(product.categoryId || ""),
-			});
-		} else {
-			setProductForm(initialFormState);
-		}
-		setFormError(null); // Reset error setiap kali dialog dibuka
-		setIsDialogOpen(true);
-	};
+  // State untuk form
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productForm, setProductForm] = useState(initialFormState);
+  const [formError, setFormError] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
-	const handleOpenDeleteDialog = (product) => {
-		setProductToDelete(product);
-		setIsDeleteDialogOpen(true);
-	};
+  // Ekstrak data
+  const products = paginatedData?.data || [];
+  const totalPages = paginatedData?.meta?.totalPages || 1;
+  const isEditing = !!productForm.id;
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setFormError(null); // Reset error sebelum submit
+  // Fetch categories
+  const { data: categoriesData, error: categoriesError } = useSWR(
+    "/categories",
+    fetchCategories,
+    { revalidateOnFocus: false }
+  );
 
-		const body = {
-			name: productForm.name,
-			stock: parseInt(productForm.stock, 10) || 0,
-			costPrice: parseFloat(productForm.costPrice) || 0,
-			sellingPrice: parseFloat(productForm.sellingPrice) || 0,
-			categoryId: parseInt(productForm.categoryId, 10),
-		};
+  const categories = Array.isArray(categoriesData)
+    ? categoriesData
+    : categoriesData?.data || [];
 
-		try {
-			// 3. Panggil fungsi API yang sesuai: update atau create
-			if (isEditing) {
-				await updateProduct(productForm.id, body);
-				toast.success("Produk berhasil diperbarui.");
-			} else {
-				await createProduct(body);
-				toast.success("Produk baru berhasil ditambahkan.");
-			}
-			mutateProducts(); // Re-fetch products
-			setIsDialogOpen(false);
-		} catch (err) {
-			console.error("Failed to save product", err);
-			setFormError(err.message || "Gagal menyimpan produk. Silakan coba lagi.");
-			toast.error(err.message || "Gagal menyimpan produk.");
-		}
-	};
+  const getCategoryName = (id) => {
+    const category = categories?.find((cat) => cat.id === id);
+    return category ? category.name : "N/A";
+  };
 
-	const getCategoryName = (id) => {
-		const category = categories?.find((cat) => cat.id === id);
-		return category ? category.name : "N/A";
-	};
+  const handleOpenDialog = (product = null) => {
+    if (product) {
+      setProductForm({
+        id: product.id,
+        name: product.name,
+        stock: String(product.stock || ""),
+        costPrice: String(product.costPrice || ""),
+        sellingPrice: String(product.sellingPrice || ""),
+        categoryId: String(product.categoryId || ""),
+      });
+    } else {
+      setProductForm(initialFormState);
+    }
+    setFormError(null);
+    setIsDialogOpen(true);
+  };
 
-	const columns = useMemo(
-		() => [
-			{
-				id: "no",
-				header: () => <div className="pl-4">No</div>,
-				cell: ({ row }) => <div className="pl-4">{row.index + 1 + pagination.pageIndex * pagination.pageSize}</div>,
-				size: 10,
-			},
-			{
-				accessorKey: "code",
-				header: "Kode Produk",
-			},
-			{
-				accessorKey: "name",
-				header: "Nama Produk",
-			},
-			{
-				accessorKey: "categoryId",
-				header: "Kategori",
-				cell: ({ row }) => getCategoryName(row.getValue("categoryId")),
-			},
-			{
-				accessorKey: "stock",
-				header: () => <div className="text-center">Stok</div>,
-				cell: ({ row }) => <div className="text-center">{row.getValue("stock")}</div>,
-			},
-			{
-				accessorKey: "sellingPrice",
-				header: () => <div className="text-right">Harga Jual</div>,
-				cell: ({ row }) => <div className="text-right">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(row.getValue("sellingPrice"))}</div>,
-			},
+  const handleOpenDeleteDialog = (product) => {
+    setProductToDelete(product);
+    setIsDeleteDialogOpen(true);
+  };
 
-			{
-				accessorKey: "costPrice",
-				header: () => <div className="text-right">Harga Modal</div>,
-				cell: ({ row }) => <div className="text-right">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(row.getValue("costPrice"))}</div>,
-			},
-			{
-				id: "actions",
-				header: () => <div className="text-right pr-4">Aksi</div>,
-				cell: ({ row }) => (
-					<div className="text-right pr-2">
-						<Button variant="ghost" size="icon" onClick={() => handleOpenDialog(row.original)}>
-							<Edit className="h-4 w-4" />
-						</Button>
-						<Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleOpenDeleteDialog(row.original)}>
-							<Trash className="h-4 w-4" />
-						</Button>
-					</div>
-				),
-			},
-		],
-		[categories, pagination.pageIndex, pagination.pageSize] // Dependensi yang lebih akurat
-	);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
 
-	const table = useReactTable({
-		data: products, // 3. Gunakan array produk yang sudah diekstrak
-		columns,
-		pageCount: totalPages, // 4. Beri tahu tabel berapa total halaman
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		onGlobalFilterChange: setGlobalFilter,
-		onPaginationChange: setPagination,
-		manualFiltering: true, // Beri tahu tabel bahwa filtering ditangani server
-		manualPagination: true, // 5. Aktifkan mode paginasi manual
-		state: {
-			globalFilter,
-			pagination,
-		},
-	});
+    const body = {
+      name: productForm.name,
+      stock: parseInt(productForm.stock, 10) || 0,
+      costPrice: parseFloat(productForm.costPrice) || 0,
+      sellingPrice: parseFloat(productForm.sellingPrice) || 0,
+      categoryId: parseInt(productForm.categoryId, 10),
+    };
 
-	if (productsError || categoriesError) return <div>Failed to load data</div>;
-	if (!paginatedData || !categories) return <div>Loading...</div>;
+    try {
+      if (isEditing) {
+        await updateProduct(productForm.id, body);
+        toast.success("Produk berhasil diperbarui.");
+      } else {
+        await createProduct(body);
+        toast.success("Produk baru berhasil ditambahkan.");
+      }
+      mutateProducts();
+      setIsDialogOpen(false);
+    } catch (err) {
+      console.error("Failed to save product", err);
+      setFormError(err.message || "Gagal menyimpan produk. Silakan coba lagi.");
+      toast.error(err.message || "Gagal menyimpan produk.");
+    }
+  };
 
-	const handleInputChange = (e) => {
-		const { name, value } = e.target;
-		setProductForm((prev) => ({ ...prev, [name]: value }));
-	};
+  const handleSearch = useCallback((value) => {
+    setSearchQuery(value);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
 
-	const confirmDelete = async () => {
-		if (!productToDelete) return;
-		try {
-			await deleteProductById(productToDelete.id);
-			mutateProducts();
-			setIsDeleteDialogOpen(false);
-			setProductToDelete(null);
-			toast.success(`Produk "${productToDelete.name}" berhasil dihapus.`);
-		} catch (err) {
-			console.error("Failed to delete product", err);
-			toast.error(err.message || "Gagal menghapus produk.");
-		}
-	};
+  const columns = useMemo(
+    () => [
+      {
+        id: "no",
+        header: () => <div className="pl-4">No</div>,
+        cell: ({ row }) => (
+          <div className="pl-4">
+            {row.index + 1 + pagination.pageIndex * pagination.pageSize}
+          </div>
+        ),
+        size: 10,
+      },
+      {
+        accessorKey: "code",
+        header: "Kode Produk",
+      },
+      {
+        accessorKey: "name",
+        header: "Nama Produk",
+      },
+      {
+        accessorKey: "categoryId",
+        header: "Kategori",
+        cell: ({ row }) => getCategoryName(row.getValue("categoryId")),
+      },
+      {
+        accessorKey: "stock",
+        header: () => <div className="text-center">Stok</div>,
+        cell: ({ row }) => (
+          <div className="text-center">{row.getValue("stock")}</div>
+        ),
+      },
+      {
+        accessorKey: "sellingPrice",
+        header: () => <div className="text-right">Harga Jual</div>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            {new Intl.NumberFormat("id-ID", {
+              style: "currency",
+              currency: "IDR",
+              minimumFractionDigits: 0,
+            }).format(row.getValue("sellingPrice"))}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "costPrice",
+        header: () => <div className="text-right">Harga Modal</div>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            {new Intl.NumberFormat("id-ID", {
+              style: "currency",
+              currency: "IDR",
+              minimumFractionDigits: 0,
+            }).format(row.getValue("costPrice"))}
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => <div className="text-right pr-4">Aksi</div>,
+        cell: ({ row }) => (
+          <div className="text-right pr-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpenDialog(row.original)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-500"
+              onClick={() => handleOpenDeleteDialog(row.original)}
+            >
+              <Trash className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    // Perbaikan: `getCategoryName` sekarang bergantung pada `categories`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pagination.pageIndex, pagination.pageSize]
+  );
 
-	return (
-		<div className="">
-			<div className="flex justify-between items-center mb-6">
-				<h1 className="text-3xl font-bold">Manajemen Produk</h1>
-				<div className="flex items-center space-x-4">
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input placeholder="Cari nama atau kode..." value={globalFilter ?? ""} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-10" />
-					</div>
-					<Button onClick={() => handleOpenDialog()}>Tambah Produk</Button>
-				</div>
-			</div>
+  const table = useReactTable({
+    data: products,
+    columns,
+    pageCount: Math.ceil(
+      (paginatedData?.meta?.total || 0) / pagination.pageSize
+    ),
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    state: {
+      pagination,
+    },
+  });
 
-			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-				<DialogContent className="sm:max-w-[425px]">
-					<DialogHeader>
-						<DialogTitle>{isEditing ? "Edit Produk" : "Tambah Produk Baru"}</DialogTitle>
-					</DialogHeader>
-					{formError && (
-						<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-							<span className="block sm:inline">{formError}</span>
-						</div>
-					)}
-					<form onSubmit={handleSubmit} className="grid gap-4 py-4">
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="name" className="text-right">
-								Nama
-							</Label>
-							<Input id="name" name="name" value={productForm.name} onChange={handleInputChange} className="col-span-3" required />
-						</div>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="categoryId" className="text-right">
-								Kategori
-							</Label>
-							<Select onValueChange={(value) => setProductForm((prev) => ({ ...prev, categoryId: value }))} value={productForm.categoryId}>
-								<SelectTrigger className="col-span-3">
-									<SelectValue placeholder="Pilih kategori" />
-								</SelectTrigger>
-								<SelectContent>
-									{categories.map((cat) => (
-										<SelectItem key={cat.id} value={String(cat.id)}>
-											{cat.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="stock" className="text-right">
-								Stok
-							</Label>
-							<Input id="stock" name="stock" type="number" value={productForm.stock} onChange={handleInputChange} className="col-span-3" min="1" />
-						</div>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="costPrice" className="text-right text-sm">
-								Harga Modal
-							</Label>
-							<Input id="costPrice" name="costPrice" type="number" value={productForm.costPrice} onChange={handleInputChange} className="col-span-3" />
-						</div>
-						<div className="grid grid-cols-4 items-center gap-4">
-							<Label htmlFor="sellingPrice" className="text-right">
-								Harga Jual
-							</Label>
-							<Input id="sellingPrice" name="sellingPrice" type="number" value={productForm.sellingPrice} onChange={handleInputChange} className="col-span-3" />
-						</div>
-						<Button type="submit">Simpan</Button>
-					</form>
-				</DialogContent>
-			</Dialog>
+  // PERBAIKAN: Urutan pengecekan yang benar
+  // 1. Cek error dulu
+  if (productsError || categoriesError) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
+          <p className="text-red-600">
+            {productsError?.message ||
+              categoriesError?.message ||
+              "Failed to load data"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-			<Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-				<DialogContent className="sm:max-w-[425px]">
-					<DialogHeader>
-						<DialogTitle>Konfirmasi Hapus</DialogTitle>
-					</DialogHeader>
-					<p>
-						Yakin ingin menghapus produk "<strong>{productToDelete?.name}</strong>"?
-					</p>
-					<div className="flex justify-end space-x-2 pt-4">
-						<Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-							Batal
-						</Button>
-						<Button variant="destructive" onClick={confirmDelete}>
-							Hapus
-						</Button>
-					</div>
-				</DialogContent>
-			</Dialog>
-			<Card>
-				<Table>
-					<TableHeader>
-						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
-								))}
-							</TableRow>
-						))}
-					</TableHeader>
-					<TableBody>
-						{table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell colSpan={columns.length} className="h-24 text-center">
-									Tidak ada hasil.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</Card>
-			<DataTablePagination table={table} />
-		</div>
-	);
+  // 2. Loading hanya untuk initial load (data belum ada sama sekali)
+  if (!paginatedData || !categories) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setProductForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await deleteProductById(productToDelete.id);
+      mutateProducts();
+      setIsDeleteDialogOpen(false);
+      setProductToDelete(null);
+      toast.success(`Produk "${productToDelete.name}" berhasil dihapus.`);
+    } catch (err) {
+      console.error("Failed to delete product", err);
+      toast.error(err.message || "Gagal menghapus produk.");
+    }
+  };
+
+  return (
+    <div className="">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Manajemen Produk</h1>
+        <div className="flex items-center space-x-4">
+          <OptimizedSearch onSearch={handleSearch} isLoading={isValidating} />
+          <Button onClick={() => handleOpenDialog()}>Tambah Produk</Button>
+        </div>
+      </div>
+
+      {/* Dialog Add/Edit */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing ? "Edit Produk" : "Tambah Produk Baru"}
+            </DialogTitle>
+          </DialogHeader>
+          {formError && (
+            <div
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <span className="block sm:inline">{formError}</span>
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nama
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                value={productForm.name}
+                onChange={handleInputChange}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="categoryId" className="text-right">
+                Kategori
+              </Label>
+              <Select
+                onValueChange={(value) =>
+                  setProductForm((prev) => ({ ...prev, categoryId: value }))
+                }
+                value={productForm.categoryId}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories?.map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stock" className="text-right">
+                Stok
+              </Label>
+              <Input
+                id="stock"
+                name="stock"
+                type="number"
+                value={productForm.stock}
+                onChange={handleInputChange}
+                className="col-span-3"
+                min="1"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="costPrice" className="text-right text-sm">
+                Harga Modal
+              </Label>
+              <Input
+                id="costPrice"
+                name="costPrice"
+                type="number"
+                value={productForm.costPrice}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="sellingPrice" className="text-right">
+                Harga Jual
+              </Label>
+              <Input
+                id="sellingPrice"
+                name="sellingPrice"
+                type="number"
+                value={productForm.sellingPrice}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            <Button type="submit">Simpan</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Delete */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus</DialogTitle>
+          </DialogHeader>
+          <p>
+            Yakin ingin menghapus produk "
+            <strong>{productToDelete?.name}</strong>"?
+          </p>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Hapus
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  Tidak ada hasil.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+      <DataTablePagination 
+        table={table} 
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        totalItems={paginatedData?.meta?.total || 0}
+        isLoading={isValidating}
+      />
+    </div>
+  );
 }
-
-// Komponen Paginasi dari ShadCN UI
-const DataTablePagination = memo(function DataTablePagination({ table }) {
-	return (
-		<div className="flex items-center justify-between px-2 pt-4">
-			<div className="flex-1 text-sm text-muted-foreground"></div>
-			<div className="flex items-center space-x-6 lg:space-x-8">
-				<div className="flex items-center space-x-2">
-					<p className="text-sm font-medium">Baris per halaman</p>
-					<Select
-						value={`${table.getState().pagination.pageSize}`}
-						onValueChange={(value) => {
-							table.setPageSize(Number(value));
-						}}
-					>
-						<SelectTrigger className="h-8 w-[70px]">
-							<SelectValue placeholder={table.getState().pagination.pageSize} />
-						</SelectTrigger>
-						<SelectContent side="top">
-							{[10, 20, 30, 40, 50].map((pageSize) => (
-								<SelectItem key={pageSize} value={`${pageSize}`}>
-									{pageSize}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="flex w-[120px] items-center justify-center text-sm font-medium">
-					Halaman {table.getState().pagination.pageIndex + 1} dari {table.getPageCount()}
-				</div>
-				<div className="flex items-center space-x-2">
-					<Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
-						<span className="sr-only">Go to first page</span>
-						<ChevronsLeft className="h-4 w-4" />
-					</Button>
-					<Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-						<span className="sr-only">Go to previous page</span>
-						<ChevronLeft className="h-4 w-4" />
-					</Button>
-					<Button variant="outline" className="h-8 w-8 p-0" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-						<span className="sr-only">Go to next page</span>
-						<ChevronRight className="h-4 w-4" />
-					</Button>
-					<Button variant="outline" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
-						<span className="sr-only">Go to last page</span>
-						<ChevronsRight className="h-4 w-4" />
-					</Button>
-				</div>
-			</div>
-		</div>
-	);
-});
