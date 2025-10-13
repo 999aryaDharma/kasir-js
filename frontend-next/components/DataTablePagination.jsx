@@ -21,7 +21,7 @@ const DataTablePagination = ({
   onPaginationChange,
   pagination,
   totalItems = 0,
-  isLoading = false
+  isLoading = false,
 }) => {
   // Hitung total pages berdasarkan totalItems dan pageSize
   const totalPages = Math.ceil(totalItems / pagination.pageSize);
@@ -31,7 +31,7 @@ const DataTablePagination = ({
     const newPageSizeNum = Number(newPageSize);
     // Hitung kembali total halaman berdasarkan totalItems dan pageSize baru
     const totalPagesCount = Math.ceil(totalItems / newPageSizeNum);
-    
+
     // Jika halaman saat ini melebihi jumlah halaman baru, reset ke halaman terakhir
     let newPageIndex = pagination.pageIndex;
     if (newPageIndex >= totalPagesCount && totalPagesCount > 0) {
@@ -39,10 +39,10 @@ const DataTablePagination = ({
     } else if (totalPagesCount === 0) {
       newPageIndex = 0;
     }
-    
+
     onPaginationChange({
       pageIndex: newPageIndex,
-      pageSize: newPageSizeNum
+      pageSize: newPageSizeNum,
     });
   };
 
@@ -50,7 +50,7 @@ const DataTablePagination = ({
   const handlePageChange = (newPageIndex) => {
     onPaginationChange({
       ...pagination,
-      pageIndex: newPageIndex
+      pageIndex: newPageIndex,
     });
   };
 

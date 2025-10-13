@@ -163,6 +163,7 @@ function ProductsDataTable({ categoriesData }) {
     manualFiltering: true,
     manualPagination: true,
     state: {
+      columnFilters,
       globalFilter,
       pagination,
     },
@@ -193,21 +194,19 @@ function ProductsDataTable({ categoriesData }) {
             />
           </div>
           <Select
-            value={table.getColumn("categoryName")?.getFilterValue() ?? "all"}
+            value={table.getColumn("categoryName")?.getFilterValue() || "all"}
             onValueChange={handleCategoryFilterChange}
           >
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Semua Kategori" />
+              <SelectValue placeholder="Semua Kategori" className="truncate max-w-[140px]" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua Kategori</SelectItem>
-              {categoriesData?.data && Array.isArray(categoriesData.data) ? 
-                categoriesData.data.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </SelectItem>
-                ))
-              : null}
+              {categoriesData?.map((cat) => (
+                <SelectItem key={cat.id} value={cat.name}>
+                  {cat.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -562,7 +561,7 @@ export default function POSView() {
   return (
     <div className="grid grid-cols-20 gap-6 p-6 items-start">
       <div className="col-span-13">
-        <ProductsDataTable categoriesData={categoriesData} />
+        <ProductsDataTable categoriesData={categoriesData?.data} />
       </div>
       <div className="col-span-7">
         <div className="sticky top-6">

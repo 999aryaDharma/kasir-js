@@ -22,7 +22,7 @@ export function SessionProvider({ children }) {
 		error,
 		isLoading,
 	} = useSWR(
-		isPublicPage ? null : "/auth/me", // ✅ JANGAN fetch jika di halaman publik
+		isPublicPage ? null : "/auth/me", // 
 		fetchUserProfile,
 		{
 			// Opsi SWR bisa disesuaikan, ini contoh yang baik
