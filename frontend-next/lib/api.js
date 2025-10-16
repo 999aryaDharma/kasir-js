@@ -21,7 +21,7 @@ async function refreshToken() {
     }
     throw new Error("No access token from refresh");
   } catch (error) {
-    console.error("Session expired, logging out.", error);
+    // console.error("Session expired, logging out.", error);
     Cookies.remove("accessToken");
     // Redirect ke login, pastikan ini hanya berjalan di client-side
     if (typeof window !== "undefined") {
@@ -50,8 +50,12 @@ async function apiFetch(endpoint, options = {}) {
     credentials: "include", // sertakan cookies
   });
 
-  // Jika token kadaluarsa → coba refresh
-  if (response.status === 401 && !isRefreshing) {
+  // Jika token kadaluarsa → coba refresh, TAPI JANGAN saat login
+  if (
+    response.status === 401 &&
+    !isRefreshing &&
+    !endpoint.includes("/auth/login")
+  ) {
     isRefreshing = true;
     refreshPromise = refreshToken();
     try {
@@ -74,11 +78,9 @@ async function apiFetch(endpoint, options = {}) {
 
   const data = await response.json();
 
+  // Jika respons tidak OK (misal: 401, 403, 500), langsung lempar error dengan pesan dari API.
   if (!response.ok) {
-    const errorData = await response
-      .json()
-      .catch(() => ({ message: response.statusText }));
-    throw new Error(errorData.message || `API Error: ${response.status}`);
+    throw new Error(data.message || `HTTP error: ${response.status}`);
   }
 
   // Simpan token setelah login berhasil

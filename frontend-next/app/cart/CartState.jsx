@@ -60,6 +60,7 @@ const getInitialCartState = () => {
 			return { items: [] };
 		}
 	}
+	return { items: [] }; // Default state jika SSR atau tidak ada di sessionStorage
 };
 
 export const CartProvider = ({ children }) => {

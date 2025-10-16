@@ -1,7 +1,7 @@
 "use client";
 
 import Cookies from "js-cookie";
-import { decodeJWT as parseJwt } from "./jwt"; // ✅ Gunakan decoder yang lebih aman
+import { decodeJWT as parseJwt } from "./jwt"; 
 
 // Get user data from token
 export function getAuthUser() {

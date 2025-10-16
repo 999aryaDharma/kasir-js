@@ -53,8 +53,8 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
+import { toast } from "sonner";
 
-// ... (Semua komponen helper seperti ProductsDataTable, DataTablePagination, TransactionArea tetap di sini)
 // Komponen untuk Tabel Produk
 function ProductsDataTable({ categoriesData }) {
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -176,7 +176,7 @@ function ProductsDataTable({ categoriesData }) {
   };
 
   return (
-    <Card className="flex flex-col h-[calc(100vh-4rem)]">
+    <Card className="flex flex-col h-[calc(100vh-3rem)]">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Daftar Produk</CardTitle>
@@ -198,7 +198,10 @@ function ProductsDataTable({ categoriesData }) {
             onValueChange={handleCategoryFilterChange}
           >
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Semua Kategori" className="truncate max-w-[140px]" />
+              <SelectValue
+                placeholder="Semua Kategori"
+                className="truncate max-w-[140px]"
+              />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua Kategori</SelectItem>
@@ -405,7 +408,8 @@ function TransactionArea() {
     try {
       const result = await createTransaction(transactionData);
       setLastChange(result.change);
-      alert(`Transaksi berhasil! Kembalian: ${formatCurrency(result.change)}`);
+      // alert(`Transaksi berhasil! Kembalian: ${formatCurrency(result.change)}`);
+      toast.success(`Transaksi berhasil!`);
       dispatch({ type: "CLEAR_CART" });
       setCash(0);
       setLastChange(null);
