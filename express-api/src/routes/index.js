@@ -10,7 +10,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 router.use("/categories", authMiddleware, categoryRoutes);
 router.use("/products", authMiddleware, productRoutes);
-router.use("/summary", summaryRoutes);
+router.use("/dashboard", summaryRoutes);
 router.use("/auth", authRoutes);
 router.use("/transactions", transactionRoutes);
 

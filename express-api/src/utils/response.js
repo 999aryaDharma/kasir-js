@@ -16,7 +16,7 @@ function successResponse(res, payload, message = "Success", code = 200) {
     (payload.accessToken || payload.refreshToken)
   ) {
     return res.status(code).json({
-      success: true,  
+      success: true,
       message,
       ...payload, // langsung spread token, bukan bungkus di data:
     });

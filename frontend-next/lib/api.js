@@ -179,8 +179,7 @@ export async function createTransaction(data) {
 }
 
 export async function fetchSummary(url) {
-  const response = await apiFetch(url);
-  // Handle both formats: { data: {...} } and {...}
+  const response = await apiFetch("/dashboard/summary");
   return response.data || response;
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, memo, useCallback } from "react";
-import { useDebounce } from "use-debounce";
 import {
   flexRender,
   getCoreRowModel,
@@ -43,16 +42,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Edit,
-  Trash,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+import { Edit, Trash } from "lucide-react";
 import { toast } from "sonner";
-import { OptimizedSearch } from "@/components/OptimizedSearch"; // Import komponen search
+import { OptimizedSearch } from "@/components/OptimizedSearch";
 
 const initialFormState = {
   id: null,
@@ -66,6 +58,12 @@ const initialFormState = {
 export default function ProductsPage() {
   // State untuk pencarian (hanya menyimpan search query final)
   const [searchQuery, setSearchQuery] = useState("");
+  // State untuk form
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productForm, setProductForm] = useState(initialFormState);
+  const [formError, setFormError] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
   // State untuk paginasi
   const [pagination, setPagination] = useState({
@@ -95,33 +93,18 @@ export default function ProductsPage() {
     revalidateOnFocus: false,
   });
 
-  // State untuk form
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [productForm, setProductForm] = useState(initialFormState);
-  const [formError, setFormError] = useState(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState(null);
+  const { data: categoriesData } = useSWR(
+    isDialogOpen ? "/categories" : null,
+    fetchCategories
+  );
+  const categories = Array.isArray(categoriesData)
+    ? categoriesData
+    : categoriesData?.data || [];
 
   // Ekstrak data
   const products = paginatedData?.data || [];
   const totalPages = paginatedData?.meta?.totalPages || 1;
   const isEditing = !!productForm.id;
-
-  // Fetch categories
-  const { data: categoriesData, error: categoriesError } = useSWR(
-    "/categories",
-    fetchCategories,
-    { revalidateOnFocus: false }
-  );
-
-  const categories = Array.isArray(categoriesData)
-    ? categoriesData
-    : categoriesData?.data || [];
-
-  const getCategoryName = (id) => {
-    const category = categories?.find((cat) => cat.id === id);
-    return category ? category.name : "N/A";
-  };
 
   const handleOpenDialog = (product = null) => {
     if (product) {
@@ -189,7 +172,8 @@ export default function ProductsPage() {
             {row.index + 1 + pagination.pageIndex * pagination.pageSize}
           </div>
         ),
-        size: 10,
+        size: 5,
+        minSize: 20,
       },
       {
         accessorKey: "code",
@@ -202,7 +186,7 @@ export default function ProductsPage() {
       {
         accessorKey: "categoryId",
         header: "Kategori",
-        cell: ({ row }) => getCategoryName(row.getValue("categoryId")),
+        cell: ({ row }) => row.original.category?.name || "N/A",
       },
       {
         accessorKey: "stock",
@@ -210,6 +194,7 @@ export default function ProductsPage() {
         cell: ({ row }) => (
           <div className="text-center">{row.getValue("stock")}</div>
         ),
+        minSize: 70,
       },
       {
         accessorKey: "sellingPrice",
@@ -259,10 +244,9 @@ export default function ProductsPage() {
             </Button>
           </div>
         ),
+        minSize: 100,
       },
     ],
-    // Perbaikan: `getCategoryName` sekarang bergantung pada `categories`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [pagination.pageIndex, pagination.pageSize]
   );
 
@@ -283,15 +267,13 @@ export default function ProductsPage() {
 
   // PERBAIKAN: Urutan pengecekan yang benar
   // 1. Cek error dulu
-  if (productsError || categoriesError) {
+  if (productsError) {
     return (
       <div className="p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
           <p className="text-red-600">
-            {productsError?.message ||
-              categoriesError?.message ||
-              "Failed to load data"}
+            {productsError?.message || "Failed to load data"}
           </p>
         </div>
       </div>
@@ -299,7 +281,7 @@ export default function ProductsPage() {
   }
 
   // 2. Loading hanya untuk initial load (data belum ada sama sekali)
-  if (!paginatedData || !categories) {
+  if (!paginatedData && !productsError) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -462,7 +444,7 @@ export default function ProductsPage() {
 
       {/* Table */}
       <Card>
-        <Table>
+        <Table className="w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -509,8 +491,8 @@ export default function ProductsPage() {
           </TableBody>
         </Table>
       </Card>
-      <DataTablePagination 
-        table={table} 
+      <DataTablePagination
+        table={table}
         pagination={pagination}
         onPaginationChange={setPagination}
         totalItems={paginatedData?.meta?.total || 0}

@@ -21,7 +21,7 @@ import Link from "next/link";
 import { logoutUser } from "@/lib/api";
 import { useAuth } from "@/components/auth/SessionProvider";
 
-export default function Header() {
+export default function Header({ title = "Dashboard" }) {
   const router = useRouter();
   const { user } = useAuth(); // Ambil data user dari context
 
@@ -46,19 +46,11 @@ export default function Header() {
     <header className="h-16 border-b bg-white flex items-center justify-between px-8 shadow-sm">
       {/* Left side - Title */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-800">
-          Dashboard Kasir POS
-        </h1>
+        <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
       </div>
 
       {/* Right side - User actions */}
       <div className="flex items-center space-x-4">
-        {/* Notifications */}
-        {/* <Button variant="ghost" size="icon" className="relative">
-					<Bell className="h-5 w-5" />
-					<span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
-				</Button> */}
-
         {/* User Profile */}
         <div className="flex items-center space-x-3">
           <div className="text-right">

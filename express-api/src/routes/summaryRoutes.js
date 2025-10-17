@@ -3,6 +3,6 @@ const router = express.Router();
 
 const { getSummary } = require("../controllers/summaryController");
 
-router.get("/", getSummary);
+router.get("/summary", getSummary);
 
 module.exports = router;

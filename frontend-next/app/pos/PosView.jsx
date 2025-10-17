@@ -12,7 +12,7 @@ import {
 } from "@tanstack/react-table";
 import { useDebounce } from "use-debounce";
 
-import { useCartState, useCartDispatch } from "@/app/cart/CartState";
+import { useCartState, useCartDispatch } from "@/app/pos/cart/CartState";
 import { UserDropdown } from "@/components/auth/UserDropdown";
 import { fetchProducts, fetchCategories, createTransaction } from "@/lib/api";
 import { Button } from "@/components/ui/button";

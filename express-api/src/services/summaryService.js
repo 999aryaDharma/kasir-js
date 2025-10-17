@@ -1,62 +1,170 @@
+// file: src/services/dashboardService.js
+
 const prisma = require("../config/prisma");
 
-const fetchSummary = async () => {
-	const totalCategories = await prisma.category.count({
-		where: {
-			isDeleted: false,
-		},
-	});
+// Helper untuk menghitung tren
+function calculateTrend(current, previous) {
+  if (previous === 0 || previous === null) return current > 0 ? 100 : 0;
+  const change = ((current - previous) / previous) * 100;
+  return parseFloat(change.toFixed(1));
+}
 
-	const totalProducts = await prisma.product.count({
-		where: {
-			isDeleted: false,
-		},
-	});
+const getSummaryData = async () => {
+  // 1. Definisikan rentang waktu
+  const now = new Date(); // Tanggal dan waktu saat ini
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
 
-	const totalTransactions = await prisma.transaction.count();
+  // Rentang untuk kemarin
+  const startOfYesterday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 1
+  );
+  const endOfYesterday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 1,
+    23,
+    59,
+    59,
+    999
+  );
 
-	const totalRevenueMonthly = await prisma.transaction.aggregate({
-		where: {
-			createdAt: {
-				gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Awal bulan ini
-				lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1), // Awal bulan depan
-			},
-		},
-		_sum: {
-			total: true,
-		},
-	});
+  // Rentang untuk NILAI TAMPILAN (awal bulan ini s/d sekarang)
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfToday = new Date(now.setHours(23, 59, 59, 999)); // Batas atas adalah akhir hari ini
 
-	// Mengambil semua item transaksi bulan ini untuk menghitung profit
-	const monthlyTransactionItems = await prisma.transactionItem.findMany({
-		where: {
-			transaction: {
-				createdAt: {
-					gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Awal bulan ini
-					lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1), // Awal bulan depan
-				},
-			},
-		},
-		select: {
-			quantity: true,
-			sellingPrice: true,
-			costPrice: true,
-		},
-	});
+  // Rentang untuk PERHITUNGAN TREN (periode yang sama di bulan lalu)
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfEquivalentDayLastMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds()
+  );
 
-	// Menghitung total profit
-	const totalProfitMonthly = monthlyTransactionItems.reduce((acc, item) => {
-		const itemProfit = (Number(item.sellingPrice) - Number(item.costPrice)) * item.quantity;
-		return acc + itemProfit;
-	}, 0);
+  // 2. Jalankan semua query secara paralel
+  const [
+    transactionsToday,
+    transactionsYesterday,
+    revenueThisMonthResult,
+    revenueLastMonthResult,
+    soldThisMonthResult,
+    soldLastMonthResult,
+    profitItemsThisMonth,
+    profitItemsLastMonth,
+  ] = await Promise.all([
+    // Total Transaksi Hari Ini
+    prisma.transaction.count({
+      where: { createdAt: { gte: startOfToday, lte: endOfToday } }, // Awal hari ini -> sekarang
+    }),
+    // Total Transaksi Kemarin
+    prisma.transaction.count({
+      where: { createdAt: { gte: startOfYesterday, lte: endOfYesterday } },
+    }),
 
-	return {
-		totalCategories,
-		totalProducts,
-		totalTransactions,
-		totalRevenueMonthly: totalRevenueMonthly._sum.total || 0,
-		totalProfitMonthly,
-	};
+    // Pendapatan Bulan Ini
+    prisma.transaction.aggregate({
+      _sum: { total: true },
+      where: { createdAt: { gte: startOfThisMonth, lte: endOfToday } }, // Awal bulan ini -> sekarang
+    }),
+    // Pendapatan Bulan Lalu (untuk tren)
+    prisma.transaction.aggregate({
+      _sum: { total: true },
+      where: {
+        createdAt: { gte: startOfLastMonth, lte: endOfEquivalentDayLastMonth },
+      }, // Periode yang sama bulan lalu
+    }),
+    // Produk Terjual Bulan Ini
+    prisma.transactionItem.aggregate({
+      _sum: { quantity: true },
+      where: {
+        transaction: { createdAt: { gte: startOfThisMonth, lte: endOfToday } },
+      },
+    }),
+    // Produk Terjual Bulan Lalu (untuk tren)
+    prisma.transactionItem.aggregate({
+      _sum: { quantity: true },
+      where: {
+        transaction: {
+          createdAt: {
+            gte: startOfLastMonth,
+            lte: endOfEquivalentDayLastMonth,
+          },
+        },
+      },
+    }),
+    // Item untuk kalkulasi Profit Bulan Ini
+    prisma.transactionItem.findMany({
+      where: { createdAt: { gte: startOfThisMonth, lte: endOfToday } },
+      select: { quantity: true, sellingPrice: true, costPrice: true },
+    }),
+    // Item untuk kalkulasi Profit Bulan Lalu (untuk tren)
+    prisma.transactionItem.findMany({
+      where: { createdAt: { gte: startOfLastMonth, lt: startOfThisMonth } },
+      select: { quantity: true, sellingPrice: true, costPrice: true },
+    }),
+  ]);
+
+  // 3. Olah data mentah menjadi nilai akhir
+  const revenueThisMonth = revenueThisMonthResult._sum.total || 0;
+  const revenueLastMonth = revenueLastMonthResult._sum.total || 0;
+  const soldThisMonth = soldThisMonthResult._sum.quantity || 0;
+  const soldLastMonth = soldLastMonthResult._sum.quantity || 0;
+
+  const profitThisMonth = profitItemsThisMonth.reduce(
+    (acc, item) => acc + (item.sellingPrice - item.costPrice) * item.quantity,
+    0
+  );
+  const profitLastMonth = profitItemsLastMonth.reduce(
+    (acc, item) => acc + (item.sellingPrice - item.costPrice) * item.quantity,
+    0
+  );
+
+  // 4. Susun JSON response
+  return {
+    transactionsToday: {
+      title: "Transaksi Hari Ini",
+      value: transactionsToday,
+      trend: {
+        value: calculateTrend(transactionsToday, transactionsYesterday),
+        isPositive: transactionsToday >= transactionsYesterday,
+      },
+    },
+    revenueMonthly: {
+      title: "Pendapatan Bulan Ini",
+      value: revenueThisMonth,
+      trend: {
+        value: calculateTrend(revenueThisMonth, revenueLastMonth),
+        isPositive: revenueThisMonth >= revenueLastMonth,
+      },
+    },
+    productsSoldMonthly: {
+      title: "Produk Terjual Bulan Ini",
+      value: soldThisMonth,
+      trend: {
+        value: calculateTrend(soldThisMonth, soldLastMonth),
+        isPositive: soldThisMonth >= soldLastMonth,
+      },
+    },
+    profitMonthly: {
+      title: "Profit Bulan Ini",
+      value: profitThisMonth,
+      trend: {
+        value: calculateTrend(profitThisMonth, profitLastMonth),
+        isPositive: profitThisMonth >= profitLastMonth,
+      },
+    },
+  };
 };
 
-module.exports = { fetchSummary };
+module.exports = {
+  getSummaryData,
+};
