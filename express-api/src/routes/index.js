@@ -3,7 +3,7 @@ const router = express.Router();
 
 const categoryRoutes = require("./categoryRoutes");
 const productRoutes = require("./productRoutes");
-const summaryRoutes = require("./summaryRoutes");
+const summaryRoutes = require("./dashboardRoutes");
 const authRoutes = require("./authRoutes");
 const transactionRoutes = require("./transactionRoutes");
 const authMiddleware = require("../middlewares/authMiddleware");

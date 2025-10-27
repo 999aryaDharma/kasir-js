@@ -1,5 +1,3 @@
-// file: src/services/dashboardService.js
-
 const prisma = require("../config/prisma");
 
 // Helper untuk menghitung tren

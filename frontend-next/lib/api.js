@@ -186,3 +186,24 @@ export async function fetchSummary(url) {
 export async function fetchUserProfile() {
   return apiFetch("/auth/me");
 }
+
+export async function fetchMonthlyPerformance(months) {
+  return apiFetch(`/dashboard/monthly-performance?months=${months}`);
+}
+
+export async function fetchTopProducts() {
+  const response = await apiFetch("/dashboard/top-products");
+  return response.data || response;
+}
+
+export async function fetchDailyTransactions() {
+  const response = await apiFetch("/dashboard/daily-transactions");
+  return response.data || response;
+}
+
+export async function fetchRecentActivities() {
+  const response = await apiFetch("/dashboard/recent-activities");
+  return response.data || response;
+}
+
+
