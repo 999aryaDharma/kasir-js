@@ -34,7 +34,25 @@ export function SummaryCard({ title, value, trend, className }) {
   );
 }
 
-SummaryCard.Skeleton = function SummaryCardSkeleton() {
+SummaryCard.Skeleton = function SummaryCardSkeleton({ count = 1 }) {
+  if (count > 1) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: count }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-4 w-3/5" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-7 w-2/5 mb-2" />
+              <Skeleton className="h-3 w-4/5" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+  
   return (
     <Card>
       <CardHeader className="pb-2">

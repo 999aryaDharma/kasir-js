@@ -6,12 +6,32 @@ const productRoutes = require("./productRoutes");
 const summaryRoutes = require("./dashboardRoutes");
 const authRoutes = require("./authRoutes");
 const transactionRoutes = require("./transactionRoutes");
+const posRoutes = require("./posRoutes");
 const authMiddleware = require("../middlewares/authMiddleware");
+const authorize = require("../middlewares/authorizeMiddleware");
 
-router.use("/categories", authMiddleware, categoryRoutes);
-router.use("/products", authMiddleware, productRoutes);
-router.use("/dashboard", summaryRoutes);
+// Rute yang tidak memerlukan otentikasi
 router.use("/auth", authRoutes);
-router.use("/transactions", transactionRoutes);
+
+// Rute yang memerlukan otentikasi dasar (hanya login)
+router.use("/transactions", authMiddleware, transactionRoutes);
+
+// Rute dengan otorisasi berbasis peran/izin
+router.use(
+  "/categories",
+  authMiddleware,
+  authorize("view:categories"),
+  categoryRoutes
+);
+router.use(
+  "/products",
+  authMiddleware,
+  authorize("view:products"),
+  productRoutes
+);
+router.use("/pos", authMiddleware, authorize("access:pos"), posRoutes);
+
+// Rute dashboard (mungkin sebagian publik, sebagian privat, diatur di dalam controller/service)
+router.use("/dashboard", summaryRoutes);
 
 module.exports = router;

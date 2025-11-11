@@ -2,12 +2,13 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import Cookies from "js-cookie";
 
 export function TokenInjector({ children }) {
 	const pathname = usePathname();
 
 	useEffect(() => {
-		const token = localStorage.getItem("accessToken");
+		const token = Cookies.get("accessToken");
 		if (token) {
 			const originalFetch = window.fetch;
 			window.fetch = function (url, options = {}) {

@@ -9,14 +9,22 @@ function calculateTrend(current, previous) {
 
 const getSummaryData = async () => {
   // 1. Definisikan rentang waktu
-  const now = new Date(); // Tanggal dan waktu saat ini
+  const now = new Date();
   const startOfToday = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate()
   );
+  const endOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
 
-  // Rentang untuk kemarin
   const startOfYesterday = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -32,99 +40,50 @@ const getSummaryData = async () => {
     999
   );
 
-  // Rentang untuk NILAI TAMPILAN (awal bulan ini s/d sekarang)
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfToday = new Date(now.setHours(23, 59, 59, 999)); // Batas atas adalah akhir hari ini
 
-  // Rentang untuk PERHITUNGAN TREN (periode yang sama di bulan lalu)
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfEquivalentDayLastMonth = new Date(
     now.getFullYear(),
     now.getMonth() - 1,
     now.getDate(),
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds(),
-    now.getMilliseconds()
+    23,
+    59,
+    59,
+    999
   );
 
-  // 2. Jalankan semua query secara paralel
-  const [
-    transactionsToday,
-    transactionsYesterday,
-    revenueThisMonthResult,
-    revenueLastMonthResult,
-    soldThisMonthResult,
-    soldLastMonthResult,
-    profitItemsThisMonth,
-    profitItemsLastMonth,
-  ] = await Promise.all([
-    // Total Transaksi Hari Ini
-    prisma.transaction.count({
-      where: { createdAt: { gte: startOfToday, lte: endOfToday } }, // Awal hari ini -> sekarang
-    }),
-    // Total Transaksi Kemarin
-    prisma.transaction.count({
-      where: { createdAt: { gte: startOfYesterday, lte: endOfYesterday } },
-    }),
-
-    // Pendapatan Bulan Ini
-    prisma.transaction.aggregate({
-      _sum: { total: true },
-      where: { createdAt: { gte: startOfThisMonth, lte: endOfToday } }, // Awal bulan ini -> sekarang
-    }),
-    // Pendapatan Bulan Lalu (untuk tren)
-    prisma.transaction.aggregate({
-      _sum: { total: true },
-      where: {
-        createdAt: { gte: startOfLastMonth, lte: endOfEquivalentDayLastMonth },
-      }, // Periode yang sama bulan lalu
-    }),
-    // Produk Terjual Bulan Ini
-    prisma.transactionItem.aggregate({
-      _sum: { quantity: true },
-      where: {
-        transaction: { createdAt: { gte: startOfThisMonth, lte: endOfToday } },
-      },
-    }),
-    // Produk Terjual Bulan Lalu (untuk tren)
-    prisma.transactionItem.aggregate({
-      _sum: { quantity: true },
-      where: {
-        transaction: {
-          createdAt: {
-            gte: startOfLastMonth,
-            lte: endOfEquivalentDayLastMonth,
-          },
-        },
-      },
-    }),
-    // Item untuk kalkulasi Profit Bulan Ini
-    prisma.transactionItem.findMany({
-      where: { createdAt: { gte: startOfThisMonth, lte: endOfToday } },
-      select: { quantity: true, sellingPrice: true, costPrice: true },
-    }),
-    // Item untuk kalkulasi Profit Bulan Lalu (untuk tren)
-    prisma.transactionItem.findMany({
-      where: { createdAt: { gte: startOfLastMonth, lt: startOfThisMonth } },
-      select: { quantity: true, sellingPrice: true, costPrice: true },
-    }),
-  ]);
+  // 2. Jalankan semua query dalam satu transaksi database
+  const [transactionsToday, transactionsYesterday, monthlyData] =
+    await prisma.$transaction([
+      prisma.transaction.count({
+        where: { createdAt: { gte: startOfToday, lte: endOfToday } },
+      }),
+      prisma.transaction.count({
+        where: { createdAt: { gte: startOfYesterday, lte: endOfYesterday } },
+      }),
+      prisma.$queryRaw`
+      SELECT
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN t.total ELSE 0 END), 0) AS "revenueThisMonth",
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN t.total ELSE 0 END), 0) AS "revenueLastMonth",
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN ti.quantity ELSE 0 END), 0) AS "soldThisMonth",
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN ti.quantity ELSE 0 END), 0) AS "soldLastMonth",
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN (ti."sellingPrice" - ti."costPrice") * ti.quantity ELSE 0 END), 0) AS "profitThisMonth",
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN (ti."sellingPrice" - ti."costPrice") * ti.quantity ELSE 0 END), 0) AS "profitLastMonth"
+      FROM "Transaction" t
+      LEFT JOIN "TransactionItem" ti ON t.id = ti."transactionId"
+      WHERE t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfToday}
+    `,
+    ]);
 
   // 3. Olah data mentah menjadi nilai akhir
-  const revenueThisMonth = revenueThisMonthResult._sum.total || 0;
-  const revenueLastMonth = revenueLastMonthResult._sum.total || 0;
-  const soldThisMonth = soldThisMonthResult._sum.quantity || 0;
-  const soldLastMonth = soldLastMonthResult._sum.quantity || 0;
-
-  const profitThisMonth = profitItemsThisMonth.reduce(
-    (acc, item) => acc + (item.sellingPrice - item.costPrice) * item.quantity,
-    0
-  );
-  const profitLastMonth = profitItemsLastMonth.reduce(
-    (acc, item) => acc + (item.sellingPrice - item.costPrice) * item.quantity,
-    0
-  );
+  const data = monthlyData[0];
+  const revenueThisMonth = Number(data.revenueThisMonth);
+  const revenueLastMonth = Number(data.revenueLastMonth);
+  const soldThisMonth = Number(data.soldThisMonth);
+  const soldLastMonth = Number(data.soldLastMonth);
+  const profitThisMonth = Number(data.profitThisMonth);
+  const profitLastMonth = Number(data.profitLastMonth);
 
   // 4. Susun JSON response
   return {

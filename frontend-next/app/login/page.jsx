@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AuthForm } from "@/components/form/auth-form";
+import { AuthForm } from "@/components/AuthForm";
 import { loginUser } from "@/lib/api";
 import { handleAuthSuccess } from "@/lib/authUtils";
 

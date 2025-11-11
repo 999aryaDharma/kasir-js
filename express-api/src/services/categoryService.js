@@ -30,7 +30,7 @@ async function getCategories({ page, limit, search }) {
   }
 
   const categories = await categoryRepo.findAllCategory();
-  return categories; 
+  return categories;
 }
 
 module.exports = {

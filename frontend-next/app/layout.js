@@ -15,6 +15,14 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        {/* Preconnect to critical origins */}
+        <link rel="preconnect" href="http://localhost:3000" />
+        <link rel="dns-prefetch" href="http://localhost:3000" />
+        
+        {/* Preload critical fonts */}
+        <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body className={inter.className}>
         <SessionProvider>
           <TokenInjector>

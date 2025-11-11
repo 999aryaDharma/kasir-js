@@ -1,5 +1,6 @@
 const transactionService = require("../services/transactionService");
 const { successResponse, errorResponse } = require("../utils/response");
+const cache = require("../utils/cache");
 
 const createTransaction = async (req, res) => {
 	try {
@@ -11,6 +12,10 @@ const createTransaction = async (req, res) => {
 		const transactionData = { userId, total, pay, change, items };
 
 		const newTransaction = await transactionService.processTransaction(transactionData);
+		
+		// Invalidasi cache dashboard karena ada transaksi baru
+		cache.invalidatePattern('dashboard');
+		cache.invalidateKeys(['summary', 'monthly_performance', 'top_products', 'daily_transactions']);
 
 		return successResponse(res, { transactionId: newTransaction.id, change }, "Transaction successful", 201);
 	} catch (error) {

@@ -1,6 +1,7 @@
 // URL API yang berjalan di container Docker
 const API_BASE_URL = process.env.EXPRESS_API_URL || "http://localhost:3000/api";
 import Cookies from "js-cookie";
+import { requestCache } from "./RequestCache";
 
 let isRefreshing = false;
 let refreshPromise = null;
@@ -34,61 +35,156 @@ async function refreshToken() {
   }
 }
 
-// Helper function untuk API calls
+// Helper function untuk API calls dengan request deduplication
+// Exclude auth endpoints dari caching karena bisa menyebabkan masalah
 async function apiFetch(endpoint, options = {}) {
-  let token = Cookies.get("accessToken");
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
+  // Jangan gunakan caching untuk auth endpoints karena bisa menyebabkan conflict
+  if (endpoint.includes("/auth/")) {
+    // Untuk auth endpoints, gunakan versi sederhana tanpa caching
+    let token = Cookies.get("accessToken");
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
 
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  let response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: "include", // sertakan cookies
-  });
+    let response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: "include", // sertakan cookies
+    });
 
-  // Jika token kadaluarsa → coba refresh, TAPI JANGAN saat login
-  if (
-    response.status === 401 &&
-    !isRefreshing &&
-    !endpoint.includes("/auth/login")
-  ) {
-    isRefreshing = true;
-    refreshPromise = refreshToken();
-    try {
-      const newToken = await refreshPromise;
-      headers["Authorization"] = `Bearer ${newToken}`;
-      // Ulangi request dengan token baru
-      response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Jika token kadaluarsa → coba refresh, TAPI JANGAN saat login
+    if (
+      response.status === 401 &&
+      !isRefreshing &&
+      !endpoint.includes("/auth/login")
+    ) {
+      isRefreshing = true;
+      refreshPromise = refreshToken();
+      try {
+        const newToken = await refreshPromise;
+        headers["Authorization"] = `Bearer ${newToken}`;
+        // Ulangi request dengan token baru
+        response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+          credentials: "include",
+        });
+      } catch (refreshError) {
+        throw new Error(
+          `Session expired. Please log in again. Original error: ${response.statusText}`
+        );
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    const data = await response.json();
+
+    // Jika respons tidak OK (misal: 401, 403, 500), langsung lempar error dengan pesan dari API.
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error: ${response.status}`);
+    }
+
+    // Simpan token setelah login berhasil
+    if (data.accessToken && endpoint.includes("/auth/login")) {
+      Cookies.set("accessToken", data.accessToken, { expires: 1 / 24 }); // Expire dalam 1 jam
+    }
+
+    return data;
+  } else {
+    // Untuk non-auth endpoints, gunakan caching
+    // Generate cache key untuk request deduplication
+    const cacheKey = requestCache.getCacheKey(
+      `${API_BASE_URL}${endpoint}`,
+      options
+    );
+
+    // Cek apakah request sudah dalam proses pending
+    if (requestCache.hasPendingRequest(cacheKey)) {
+      return requestCache.pendingRequests.get(cacheKey);
+    }
+
+    // Cek apakah response sudah ada di cache
+    if (requestCache.hasCachedResponse(cacheKey)) {
+      return requestCache.getCachedResponse(cacheKey);
+    }
+
+    // Siapkan token dan headers
+    let token = Cookies.get("accessToken");
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
+
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    // Buat promise untuk request
+    const requestPromise = (async () => {
+      let response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
-        credentials: "include",
+        credentials: "include", // sertakan cookies
       });
-    } catch (refreshError) {
-      throw new Error(
-        `Session expired. Please log in again. Original error: ${response.statusText}`
-      );
-    } finally {
-      isRefreshing = false;
-    }
+
+      // Jika token kadaluarsa → coba refresh, TAPI JANGAN saat login
+      if (
+        response.status === 401 &&
+        !isRefreshing &&
+        !endpoint.includes("/auth/login")
+      ) {
+        isRefreshing = true;
+        refreshPromise = refreshToken();
+        try {
+          const newToken = await refreshPromise;
+          headers["Authorization"] = `Bearer ${newToken}`;
+          // Ulangi request dengan token baru
+          response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+            credentials: "include",
+          });
+        } catch (refreshError) {
+          throw new Error(
+            `Session expired. Please log in again. Original error: ${response.statusText}`
+          );
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      const data = await response.json();
+
+      // Jika respons tidak OK (misal: 401, 403, 500), langsung lempar error dengan pesan dari API.
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error: ${response.status}`);
+      }
+
+      // Simpan token setelah login berhasil
+      if (data.accessToken && endpoint.includes("/auth/login")) {
+        Cookies.set("accessToken", data.accessToken, { expires: 1 / 24 }); // Expire dalam 1 jam
+      }
+
+      return data;
+    })();
+
+    // Simpan promise ke pending requests dan tambahkan caching setelah selesai
+    const promiseWithCache = requestPromise
+      .then((result) => {
+        // Simpan ke cache setelah request selesai
+        requestCache.setCachedResponse(cacheKey, result);
+        return result;
+      })
+      .catch((error) => {
+        // Jangan simpan error ke cache
+        throw error;
+      });
+
+    // Tambahkan promise ke pending requests
+    return requestCache.setPendingRequest(cacheKey, promiseWithCache);
   }
-
-  const data = await response.json();
-
-  // Jika respons tidak OK (misal: 401, 403, 500), langsung lempar error dengan pesan dari API.
-  if (!response.ok) {
-    throw new Error(data.message || `HTTP error: ${response.status}`);
-  }
-
-  // Simpan token setelah login berhasil
-  if (data.accessToken && endpoint.includes("/auth/login")) {
-    Cookies.set("accessToken", data.accessToken, { expires: 1 / 24 }); // Expire dalam 1 jam
-  }
-
-  return data;
 }
 
 // --- AUTH API ---
@@ -178,7 +274,7 @@ export async function createTransaction(data) {
   });
 }
 
-export async function fetchSummary(url) {
+export async function fetchSummary() {
   const response = await apiFetch("/dashboard/summary");
   return response.data || response;
 }
@@ -206,4 +302,54 @@ export async function fetchRecentActivities() {
   return response.data || response;
 }
 
+export async function fetchDashboard(months = 6) {
+  const response = await apiFetch(`/dashboard?months=${months}`);
+  return response.data || response;
+}
 
+export async function fetchPOSInitialData() {
+  const response = await apiFetch("/pos/initial-data");
+  return response.data || response;
+}
+
+export function preloadPOSData() {
+  // Gunakan strategi preload untuk menginisiasi request lebih awal
+  if (typeof window !== "undefined") {
+    // Lakukan fetch awal tanpa menunggu hasilnya
+    fetch(
+      `${
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+      }/pos/initial-data`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${Cookies.get("accessToken")}`,
+          Accept: "application/json",
+        },
+      }
+    ).catch((err) => {
+      // Hanya log error, tidak perlu throw karena ini preload
+      console.warn("Preload POS data failed (non-critical):", err);
+    });
+  }
+}
+
+export function preloadDashboardData(months = 6) {
+  // Preload dashboard data
+  if (typeof window !== "undefined") {
+    fetch(
+      `${
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+      }/dashboard?months=${months}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${Cookies.get("accessToken")}`,
+          Accept: "application/json",
+        },
+      }
+    ).catch((err) => {
+      console.warn("Preload dashboard data failed (non-critical):", err);
+    });
+  }
+}
