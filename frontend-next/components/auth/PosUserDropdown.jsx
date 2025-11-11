@@ -14,11 +14,24 @@ import { LogOut, BarChart, ShoppingCart } from "lucide-react";
 import { handleLogout } from "@/lib/authUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function UserDropdown() {
+export function PosUserDropdown() {
   const { user } = useAuth();
 
   const getRoleName = (role) => {
     return role === 1 ? "Administrator" : "Kasir";
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "";
+    const words = name.split(" ").filter(Boolean); // filter(Boolean) untuk menghapus spasi ganda
+    if (words.length >= 2) {
+      // Ambil huruf pertama dari dua kata pertama
+      return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+    } else if (words.length === 1) {
+      // Ambil huruf pertama jika hanya ada satu kata
+      return words[0].charAt(0).toUpperCase();
+    }
+    return ""; // Fallback jika nama kosong
   };
 
   // Pastikan user data sudah dimuat sebelum menampilkan informasi
@@ -44,23 +57,18 @@ export function UserDropdown() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="relative h-8 w-auto justify-start space-x-3 px-2"
+          className="relative h-8 w-auto justify-start space-x-1 px-2"
         >
-          <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={`https://avatar.vercel.sh/${user.username}.png`}
-              alt={user.username}
-            />
-            <AvatarFallback>
-              {user.username.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
           <div className="text-right">
             <p className="font-medium text-sm">{user.username}</p>
             <p className="text-xs text-muted-foreground">
               {getRoleName(user.role)}
             </p>
           </div>
+          <Avatar className="h-8 w-8">
+            {/* Hapus AvatarImage agar Fallback (inisial) selalu ditampilkan */}
+            <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+          </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -73,10 +81,6 @@ export function UserDropdown() {
             Dashboard
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => (window.location.href = "/pos")}>
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          Ke Kasir
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="text-red-600">
           <LogOut className="w-4 h-4 mr-2" />

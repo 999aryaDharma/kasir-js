@@ -3,11 +3,10 @@
 import { useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { SummaryCard } from "@/components/ui/summary-card";
-
-// Skeleton component for charts, defined at the module level
-const ChartSkeleton = () => (
-  <div className="h-[366px] w-full bg-muted/50 animate-pulse rounded-lg" />
-);
+import { PerformanceChartSkeleton } from "@/components/dashboard/PerformanceChartSkeleton";
+import { TopProductsChartSkeleton } from "@/components/dashboard/TopProductsChartSkeleton";
+import { RecentActivitiesSkeleton } from "@/components/dashboard/RecentActivitiesSkeleton";
+import { DailyTransactionsChartSkeleton } from "@/components/dashboard/DailyTransactionsChartSkeleton";
 
 // Dynamic imports for code splitting
 const SummarySection = dynamic(
@@ -22,21 +21,24 @@ const PerformanceChart = dynamic(
     import("@/components/dashboard/PerformanceChart").then(
       (mod) => mod.PerformanceChart
     ),
-  { ssr: false, loading: () => <ChartSkeleton /> }
+  { ssr: false, loading: () => <PerformanceChartSkeleton /> }
 );
 const TopProductsChart = dynamic(
   () =>
     import("@/components/dashboard/TopProductsChart").then(
       (mod) => mod.TopProductsChart
     ),
-  { ssr: false, loading: () => <ChartSkeleton /> }
+  { ssr: false, loading: () => <TopProductsChartSkeleton /> }
 );
 const DailyTransactionsChart = dynamic(
   () =>
     import("@/components/dashboard/DailyTransactionsChart").then(
       (mod) => mod.DailyTransactionsChart
     ),
-  { ssr: false, loading: () => <ChartSkeleton /> }
+  {
+    ssr: false,
+    loading: () => <DailyTransactionsChartSkeleton />,
+  }
 );
 const RecentActivities = dynamic(
   () =>
@@ -45,9 +47,7 @@ const RecentActivities = dynamic(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-[314px] w-full bg-muted/50 animate-pulse rounded-lg" />
-    ),
+    loading: () => <RecentActivitiesSkeleton />,
   }
 );
 
@@ -74,27 +74,23 @@ export default function DashboardPage() {
 
       {/* Chart Overview */}
       <div className="mt-6 grid gap-4 lg:grid-cols-7">
-        <Suspense fallback={<ChartSkeleton />}>
+        <Suspense fallback={<PerformanceChartSkeleton />}>
           <PerformanceChart
             selectedMonths={selectedMonths}
             onSelectMonths={setSelectedMonths}
           />
         </Suspense>
-        <Suspense fallback={<ChartSkeleton />}>
+        <Suspense fallback={<TopProductsChartSkeleton />}>
           <TopProductsChart />
         </Suspense>
       </div>
 
       {/* Daily Transactions & Recent Activities */}
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Suspense fallback={<ChartSkeleton />}>
+        <Suspense fallback={<DailyTransactionsChartSkeleton />}>
           <DailyTransactionsChart />
         </Suspense>
-        <Suspense
-          fallback={
-            <div className="h-[314px] w-full bg-muted/50 animate-pulse rounded-lg" />
-          }
-        >
+        <Suspense fallback={<RecentActivitiesSkeleton />}>
           <RecentActivities />
         </Suspense>
       </div>

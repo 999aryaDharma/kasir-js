@@ -56,7 +56,7 @@ export default function POSView() {
   // Preload POS data saat komponen dimount
   React.useEffect(() => {
     // Panggil preload untuk mempercepat request
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       preloadPOSData();
     }
   }, []);
@@ -90,11 +90,13 @@ export default function POSView() {
   return (
     <div className="grid grid-cols-20 gap-6 p-6 items-start">
       <div className="col-span-13">
-        <ProductsDataTable categoriesData={posData.categories} posData={posData} />
+        <ProductsDataTable
+          categoriesData={posData.categories}
+          posData={posData}
+        />
       </div>
       <div className="col-span-7">
         <div className="sticky top-6">
-          <UserDropdown />
           <TransactionArea />
         </div>
       </div>

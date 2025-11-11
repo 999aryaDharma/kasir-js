@@ -28,31 +28,33 @@ const DailyTransactionsChart = () => {
   // Format data untuk daily transactions
   const dailyTransactionsData = useMemo(() => {
     if (!dailyTransactions) return [];
-    
+
     // Cek apakah data berada dalam property 'data' atau langsung berupa array
-    const transactionsData = Array.isArray(dailyTransactions) 
-      ? dailyTransactions 
+    const transactionsData = Array.isArray(dailyTransactions)
+      ? dailyTransactions
       : dailyTransactions.data || [];
-      
-    return transactionsData?.map((item) => {
-      const date = new Date(item.date);
-      const dayName = date.toLocaleDateString("id-ID", { weekday: "short" });
-      return {
-        name: dayName, // Ubah dari 'day' ke 'name' agar konsisten dengan konvensi Recharts
-        date: item.formatted_date, // Tambahkan tanggal dalam format ISO
-        shortDate: date.toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "short",
-        }), // Tambahkan tanggal pendek
-        count: item.transactionCount || 0,
-      };
-    }) || [];
+
+    return (
+      transactionsData?.map((item) => {
+        const date = new Date(item.date);
+        const dayName = date.toLocaleDateString("id-ID", { weekday: "short" });
+        return {
+          name: dayName, // Ubah dari 'day' ke 'name' agar konsisten dengan konvensi Recharts
+          date: item.formatted_date, // Tambahkan tanggal dalam format ISO
+          shortDate: date.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+          }), // Tambahkan tanggal pendek
+          count: item.transactionCount || 0,
+        };
+      }) || []
+    );
   }, [dailyTransactions]);
 
   const chartConfig = {
     count: {
       label: "Transaksi",
-      color: "#a3e635", // lime-400
+      color: "hsl(var(--chart-2))",
     },
   };
 

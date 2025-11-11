@@ -2,14 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import useSWR from "swr";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-  Legend,
-} from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis, Legend } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -19,11 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchMonthlyPerformance } from "@/lib/api";
 
 const PerformanceChart = ({ selectedMonths, onSelectMonths }) => {
-  const [localSelectedMonths, setLocalSelectedMonths] = useState(selectedMonths || 6);
-  
   const { data: monthlyPerformance, error } = useSWR(
-    `/monthly-performance-${localSelectedMonths}`,
-    () => fetchMonthlyPerformance(localSelectedMonths),
+    `/monthly-performance-${selectedMonths}`,
+    () => fetchMonthlyPerformance(selectedMonths),
     {
       refreshInterval: 300000, // Refresh setiap 5 menit
       revalidateOnFocus: false,
@@ -37,31 +28,33 @@ const PerformanceChart = ({ selectedMonths, onSelectMonths }) => {
   // Format data untuk monthly performance chart
   const chartData = useMemo(() => {
     if (!monthlyPerformance) return [];
-    
+
     // Cek apakah data berada dalam property 'data' atau langsung berupa array
-    const performanceData = Array.isArray(monthlyPerformance) 
-      ? monthlyPerformance 
+    const performanceData = Array.isArray(monthlyPerformance)
+      ? monthlyPerformance
       : monthlyPerformance.data || [];
-      
-    return performanceData?.map((item) => {
-      const date = new Date(item.month);
-      const monthName = date.toLocaleDateString("id-ID", { month: "short" });
-      return {
-        month: monthName,
-        revenue: item.revenue || 0,
-        profit: item.profit || 0,
-      };
-    }) || [];
+
+    return (
+      performanceData?.map((item) => {
+        const date = new Date(item.month);
+        const monthName = date.toLocaleDateString("id-ID", { month: "short" });
+        return {
+          month: monthName,
+          revenue: item.revenue || 0,
+          profit: item.profit || 0,
+        };
+      }) || []
+    );
   }, [monthlyPerformance]);
 
   const chartConfig = {
     revenue: {
       label: "Pendapatan",
-      color: "#fb923c", // orange-500
+      color: "hsl(var(--chart-1))",
     },
     profit: {
       label: "Profit",
-      color: "#a3e635", // lime-400
+      color: "hsl(var(--chart-2))",
     },
   };
 
@@ -72,14 +65,14 @@ const PerformanceChart = ({ selectedMonths, onSelectMonths }) => {
           <div>
             <CardTitle>Performance Overview</CardTitle>
             <div className="text-sm text-muted-foreground">
-              Revenue dan Profit {localSelectedMonths} bulan terakhir
+              Revenue dan Profit {selectedMonths} bulan terakhir
             </div>
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setLocalSelectedMonths(6)}
+              onClick={() => onSelectMonths(6)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                localSelectedMonths === 6
+                selectedMonths === 6
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
@@ -87,9 +80,9 @@ const PerformanceChart = ({ selectedMonths, onSelectMonths }) => {
               6 Bulan
             </button>
             <button
-              onClick={() => setLocalSelectedMonths(12)}
+              onClick={() => onSelectMonths(12)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                localSelectedMonths === 12
+                selectedMonths === 12
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
@@ -120,17 +113,17 @@ const PerformanceChart = ({ selectedMonths, onSelectMonths }) => {
               tickLine={false}
               axisLine={false}
               fontSize={12}
-              tickFormatter={(value) =>
-                `${(value / 1000000).toFixed(0)}M`
-              }
+              tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
             />
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  formatter={(value) => new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: 'IDR'
-                  }).format(value)}
+                  formatter={(value) =>
+                    new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                    }).format(value)
+                  }
                 />
               }
             />
@@ -158,6 +151,6 @@ const PerformanceChart = ({ selectedMonths, onSelectMonths }) => {
   );
 };
 
-PerformanceChart.displayName = 'PerformanceChart';
+PerformanceChart.displayName = "PerformanceChart";
 
 export { PerformanceChart };

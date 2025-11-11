@@ -280,7 +280,8 @@ export async function fetchSummary() {
 }
 
 export async function fetchUserProfile() {
-  return apiFetch("/auth/me");
+  const response = await apiFetch("/auth/me");
+  return response.data || response;
 }
 
 export async function fetchMonthlyPerformance(months) {

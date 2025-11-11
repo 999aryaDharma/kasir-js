@@ -25,11 +25,11 @@ export function TransactionArea() {
   const [lastChange, setLastChange] = React.useState(null);
   const { items: cartItems } = useCartState();
   const dispatch = useCartDispatch();
-  
+
   const handleRemoveItem = (itemId) => {
     dispatch({ type: "REMOVE_ITEM", payload: { id: itemId } });
   };
-  
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -37,19 +37,19 @@ export function TransactionArea() {
       minimumFractionDigits: 0,
     }).format(amount);
   };
-  
+
   const total = React.useMemo(() => {
     return cartItems.reduce(
       (acc, item) => acc + item.sellingPrice * item.quantity,
       0
     );
   }, [cartItems]);
-  
+
   const change = React.useMemo(
     () => (cash > 0 ? cash - total : 0),
     [cash, total]
   );
-  
+
   const handlePay = async () => {
     setPaymentError("");
     setLastChange(null);
@@ -84,16 +84,26 @@ export function TransactionArea() {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <Card className="flex flex-col h-[calc(100vh-3rem)]">
       <CardHeader>
         <CardTitle>Keranjang</CardTitle>
-        <CardDescription>
-          {cartItems.length > 0
-            ? `Terdapat ${cartItems.length} item di keranjang.`
-            : "Keranjang masih kosong."}
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <CardDescription>
+            {cartItems.length > 0
+              ? `Terdapat ${cartItems.length} item di keranjang.`
+              : "Keranjang masih kosong."}
+          </CardDescription>
+
+          <Button
+            className="ml-auto mt-2 bg-red-600 hover:bg-red-700 cursor-pointer"
+            size="sm"
+            onClick={() => dispatch({ type: "CLEAR_CART" })}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus Semua
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto min-h-[150px]">
         {cartItems.length > 0 ? (

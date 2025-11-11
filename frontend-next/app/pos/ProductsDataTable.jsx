@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useCartState, useCartDispatch } from "@/app/pos/cart/CartState";
-import { UserDropdown } from "@/components/auth/UserDropdown";
+import { PosUserDropdown } from "@/components/auth/PosUserDropdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,7 @@ export function ProductsDataTable({ categoriesData, posData }) {
       },
       {
         accessorKey: "category.name",
+        id: "category", // Definisikan ID yang eksplisit dan sederhana
         header: "Kategori",
         filterFn: (row, id, value) => {
           return value === "all" ? true : row.getValue(id) === value;
@@ -116,7 +117,7 @@ export function ProductsDataTable({ categoriesData, posData }) {
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     state: {
-      columnFilters: [{ id: "category.name", value: categoryFilter }],
+      columnFilters: [{ id: "category", value: categoryFilter }],
     },
   });
 
@@ -125,7 +126,7 @@ export function ProductsDataTable({ categoriesData, posData }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Daftar Produk</CardTitle>
-          <UserDropdown />
+          <PosUserDropdown />
         </div>
 
         <div className="mt-4 flex items-center space-x-4">
@@ -142,7 +143,7 @@ export function ProductsDataTable({ categoriesData, posData }) {
             value={categoryFilter}
             onValueChange={(value) => {
               setCategoryFilter(value);
-              table.getColumn("category.name")?.setFilterValue(value);
+              table.getColumn("category")?.setFilterValue(value);
             }}
           >
             <SelectTrigger className="w-[180px]">

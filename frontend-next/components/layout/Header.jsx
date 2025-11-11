@@ -1,46 +1,38 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import {
-  User,
-  LogOut,
-  Bell,
-  CircleUser as UserCircle,
-  ShoppingCart,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth/SessionProvider";
+import { handleLogout } from "@/lib/authUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Link from "next/link";
-import { logoutUser } from "@/lib/api";
-import { useAuth } from "@/components/auth/SessionProvider";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LogOut, BarChart, ShoppingCart } from "lucide-react";
 
 export default function Header({ title = "Dashboard" }) {
-  const router = useRouter();
-  const { user } = useAuth(); // Ambil data user dari context
+  const { user } = useAuth();
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-      localStorage.removeItem("accessToken");
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const getRoleName = (role) => {
+    return role === 1 ? "Administrator" : "Kasir";
   };
 
-  const currentUser = user
-    ? {
-        name: user.data.username,
-        role: user.data.role === 1 ? "Administrator" : "Kasir",
-      }
-    : { name: "Loading...", role: "..." };
+  const getInitials = (name) => {
+    if (!name) return "";
+    const words = name.split(" ").filter(Boolean); // filter(Boolean) untuk menghapus spasi ganda
+    if (words.length >= 2) {
+      // Ambil huruf pertama dari dua kata pertama
+      return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+    } else if (words.length === 1) {
+      // Ambil huruf pertama jika hanya ada satu kata
+      return words[0].charAt(0).toUpperCase();
+    }
+    return ""; // Fallback jika nama kosong
+  };
 
   return (
     <header className="h-16 border-b bg-white flex items-center justify-between px-8 shadow-sm">
@@ -51,64 +43,55 @@ export default function Header({ title = "Dashboard" }) {
 
       {/* Right side - User actions */}
       <div className="flex items-center space-x-4">
-        {/* User Profile */}
-        <div className="flex items-center space-x-3">
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-700">
-              {currentUser.name}
-            </p>
-            <p className="text-xs text-gray-500">{currentUser.role}</p>
+        {!user ? (
+          // Skeleton loader yang bagus untuk profil
+          <div className="flex items-center space-x-3">
+            <div className="w-24 space-y-1 text-left">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-3/4" />
+            </div>
+            <Skeleton className="h-8 w-8 rounded-full" />
           </div>
-
+        ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                {user && user.avatar ? (
-                  <img
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
-                    className="h-8 w-8 rounded-full"
-                  />
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                    <User className="h-4 w-4" />
-                  </div>
-                )}
+              <Button
+                variant="ghost"
+                className="relative h-8 w-auto justify-start space-x-3 px-2"
+              >
+                <div className="text-right">
+                  <p className="font-medium text-sm">{user.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getRoleName(user.role)}
+                  </p>
+                </div>
+                <Avatar className="h-8 w-8">
+                  {/* Hapus AvatarImage agar Fallback (inisial) selalu ditampilkan */}
+                  <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <p className="font-semibold">
-                  {user ? user.username : "Loading..."}
-                </p>
-                <p className="text-xs text-gray-500 font-normal">
-                  {user ? (user.role === 1 ? "Administrator" : "Kasir") : "..."}
-                </p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <Link href="/profile" passHref>
-                <DropdownMenuItem>
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+            <DropdownMenuContent align="end">
+              {user.role === 1 && (
+                <DropdownMenuItem
+                  onClick={() => (window.location.href = "/dashboard")}
+                >
+                  <BarChart className="w-4 h-4 mr-2" />
+                  Dashboard
                 </DropdownMenuItem>
-              </Link>
-              <Link href="/pos" passHref>
-                <DropdownMenuItem>
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  <span>Ke Kasir</span>
-                </DropdownMenuItem>
-              </Link>
+              )}
+              <DropdownMenuItem onClick={() => (window.location.href = "/pos")}>
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Ke Kasir
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-red-600 focus:text-red-600 focus:bg-red-50"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Logout</span>
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        )}
       </div>
     </header>
   );

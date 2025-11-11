@@ -2,13 +2,7 @@
 
 import React, { useMemo } from "react";
 import useSWR from "swr";
-import {
-  CartesianGrid,
-  Bar,
-  BarChart,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { CartesianGrid, Bar, BarChart, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -34,22 +28,24 @@ const TopProductsChart = () => {
   // Format data untuk top products
   const topProductsData = useMemo(() => {
     if (!topProducts) return [];
-    
+
     // Cek apakah data berada dalam property 'data' atau langsung berupa array
-    const productsData = Array.isArray(topProducts) 
-      ? topProducts 
+    const productsData = Array.isArray(topProducts)
+      ? topProducts
       : topProducts.data || [];
-      
-    return productsData?.map((item) => ({
-      name: item.productName,
-      sales: item.totalSold || 0,
-    })) || [];
+
+    return (
+      productsData?.map((item) => ({
+        name: item.productName,
+        sales: item.totalSold || 0,
+      })) || []
+    );
   }, [topProducts]);
 
   const chartConfig = {
     sales: {
       label: "Terjual",
-      color: "#fb923c", // orange-500
+      color: "hsl(var(--chart-1))",
     },
   };
 
@@ -60,10 +56,7 @@ const TopProductsChart = () => {
         <div className="text-sm text-muted-foreground">Top 5 bulan ini</div>
       </CardHeader>
       <CardContent>
-        <ChartContainer
-          config={chartConfig}
-          className="h-[300px] w-full"
-        >
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <BarChart
             data={topProductsData}
             layout="vertical"
@@ -74,16 +67,8 @@ const TopProductsChart = () => {
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" fontSize={12} />
-            <YAxis
-              dataKey="name"
-              type="category"
-              width={150}
-              fontSize={11}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent />}
-            />
+            <YAxis dataKey="name" type="category" width={150} fontSize={11} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <Bar
               dataKey="sales"
               fill="var(--color-sales)"
@@ -96,6 +81,6 @@ const TopProductsChart = () => {
   );
 };
 
-TopProductsChart.displayName = 'TopProductsChart';
+TopProductsChart.displayName = "TopProductsChart";
 
 export { TopProductsChart };

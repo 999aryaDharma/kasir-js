@@ -1,5 +1,6 @@
 "use client";
 
+import { mutate } from "swr";
 import Cookies from "js-cookie";
 import { decodeJWT as parseJwt } from "./jwt"; 
 
@@ -63,6 +64,11 @@ export const handleAuthSuccess = (data) => {
 // Fungsi untuk logout
 export const handleLogout = () => {
 	Cookies.remove("accessToken");
+
+	// BERSIHKAN SWR CACHE SECARA GLOBAL
+	// Ini akan menghapus semua cache SWR, memastikan data user yang baru akan di-fetch.
+	mutate(() => true, undefined, { revalidate: false });
+
 	// Redirect ke login dengan full page reload
 	window.location.replace("/login");
 };
