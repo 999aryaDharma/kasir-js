@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 BigInt.prototype.toJSON = function () {
-	return this.toString();
+  return this.toString();
 };
 
 const express = require("express");
@@ -9,19 +9,20 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = process.env.PORT || 3000;
+const prisma = require("./config/prisma"); // Impor instance Prisma
 
 const routes = require("./routes"); // ✅ Import aggregator
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 // Middleware global
 app.use(
-	cors({
-		origin: true,
-		credentials: true,
-		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization"],
-		exposedHeaders: ["Set-Cookie"],
-	})
+  cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Set-Cookie"],
+  })
 );
 
 app.use(express.json());
@@ -29,7 +30,7 @@ app.use(cookieParser());
 
 // Health check
 app.get("/", (req, res) => {
-	res.json({ message: "🚀 API Kasir is alive!" });
+  res.json({ message: "🚀 API Kasir is alive!" });
 });
 
 // Semua routes di bawah /api
@@ -38,6 +39,20 @@ app.use("/api", routes);
 // Error handler (taruh paling akhir)
 app.use(errorMiddleware);
 
-app.listen(PORT, () => {
-	console.log(`Server running on http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    // KUNCI UTAMA: Buat koneksi ke database saat server dimulai
+    await prisma.$connect();
+    console.log("🚀 Database connection established successfully.");
+
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    await prisma.$disconnect();
+    process.exit(1);
+  }
+}
+
+startServer();

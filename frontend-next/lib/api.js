@@ -302,11 +302,6 @@ export async function fetchRecentActivities() {
   return response.data || response;
 }
 
-export async function fetchDashboard(months = 6) {
-  const response = await apiFetch(`/dashboard?months=${months}`);
-  return response.data || response;
-}
-
 export async function fetchPOSInitialData() {
   const response = await apiFetch("/pos/initial-data");
   return response.data || response;
@@ -330,26 +325,6 @@ export function preloadPOSData() {
     ).catch((err) => {
       // Hanya log error, tidak perlu throw karena ini preload
       console.warn("Preload POS data failed (non-critical):", err);
-    });
-  }
-}
-
-export function preloadDashboardData(months = 6) {
-  // Preload dashboard data
-  if (typeof window !== "undefined") {
-    fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
-      }/dashboard?months=${months}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${Cookies.get("accessToken")}`,
-          Accept: "application/json",
-        },
-      }
-    ).catch((err) => {
-      console.warn("Preload dashboard data failed (non-critical):", err);
     });
   }
 }

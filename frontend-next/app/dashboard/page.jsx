@@ -1,15 +1,8 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { SummaryCard } from "@/components/ui/summary-card";
-import { AlertCircle } from "lucide-react";
-import { preloadDashboardData } from "@/lib/preload";
-
-// Preload dashboard data saat komponen dimount
-if (typeof window !== 'undefined') {
-  preloadDashboardData(6);
-}
 
 // Skeleton component for charts, defined at the module level
 const ChartSkeleton = () => (
@@ -19,7 +12,9 @@ const ChartSkeleton = () => (
 // Dynamic imports for code splitting
 const SummarySection = dynamic(
   () =>
-    import("@/components/dashboard/SummarySection").then((mod) => mod.SummarySection),
+    import("@/components/dashboard/SummarySection").then(
+      (mod) => mod.SummarySection
+    ),
   { ssr: false, loading: () => <SummaryCard.Skeleton count={4} /> }
 );
 const PerformanceChart = dynamic(
@@ -62,7 +57,7 @@ export default function DashboardPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-      
+
       {/* Summary Section */}
       <Suspense
         fallback={
@@ -80,7 +75,10 @@ export default function DashboardPage() {
       {/* Chart Overview */}
       <div className="mt-6 grid gap-4 lg:grid-cols-7">
         <Suspense fallback={<ChartSkeleton />}>
-          <PerformanceChart selectedMonths={selectedMonths} onSelectMonths={setSelectedMonths} />
+          <PerformanceChart
+            selectedMonths={selectedMonths}
+            onSelectMonths={setSelectedMonths}
+          />
         </Suspense>
         <Suspense fallback={<ChartSkeleton />}>
           <TopProductsChart />
@@ -92,9 +90,11 @@ export default function DashboardPage() {
         <Suspense fallback={<ChartSkeleton />}>
           <DailyTransactionsChart />
         </Suspense>
-        <Suspense fallback={
-          <div className="h-[314px] w-full bg-muted/50 animate-pulse rounded-lg" />
-        }>
+        <Suspense
+          fallback={
+            <div className="h-[314px] w-full bg-muted/50 animate-pulse rounded-lg" />
+          }
+        >
           <RecentActivities />
         </Suspense>
       </div>

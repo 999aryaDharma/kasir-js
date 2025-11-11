@@ -64,12 +64,12 @@ const getSummaryData = async () => {
       }),
       prisma.$queryRaw`
       SELECT
-        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN t.total ELSE 0 END), 0) AS "revenueThisMonth",
-        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN t.total ELSE 0 END), 0) AS "revenueLastMonth",
-        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN ti.quantity ELSE 0 END), 0) AS "soldThisMonth",
-        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN ti.quantity ELSE 0 END), 0) AS "soldLastMonth",
-        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN (ti."sellingPrice" - ti."costPrice") * ti.quantity ELSE 0 END), 0) AS "profitThisMonth",
-        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN (ti."sellingPrice" - ti."costPrice") * ti.quantity ELSE 0 END), 0) AS "profitLastMonth"
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN t.total ELSE 0 END), 0) AS "revenueThisMonth", -- Pendapatan Bulan Ini
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN t.total ELSE 0 END), 0) AS "revenueLastMonth", -- Pendapatan Bulan Lalu
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN ti.quantity ELSE 0 END), 0) AS "soldThisMonth", -- Produk Terjual Bulan Ini
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN ti.quantity ELSE 0 END), 0) AS "soldLastMonth", -- Produk Terjual Bulan Lalu
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfThisMonth} THEN (ti."sellingPrice" - ti."costPrice") * ti.quantity ELSE 0 END), 0) AS "profitThisMonth", -- Profit Bulan Ini
+        COALESCE(SUM(CASE WHEN t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfEquivalentDayLastMonth} THEN (ti."sellingPrice" - ti."costPrice") * ti.quantity ELSE 0 END), 0) AS "profitLastMonth" -- Profit Bulan Lalu
       FROM "Transaction" t
       LEFT JOIN "TransactionItem" ti ON t.id = ti."transactionId"
       WHERE t."createdAt" >= ${startOfLastMonth} AND t."createdAt" <= ${endOfToday}
